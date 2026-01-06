@@ -1,0 +1,477 @@
+/**
+ * Approval View Styles
+ *
+ * Shared styles for all approval view components.
+ * These styles are used by both DefaultApproval and specialized views.
+ */
+
+/* Base approval card */
+.approval-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Header with icon and action title */
+.approval-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.approval-icon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.approval-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Field display (key-value pairs) */
+.approval-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.approval-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.approval-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.approval-field-value {
+  padding: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Actions (approve/reject buttons) */
+.approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-default);
+}
+
+/* Generic label styling */
+.approval-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-right: var(--space-2);
+}
+
+/* ============================================
+ * GitHub Write File Approval Styles
+ * ============================================ */
+
+.approval-github-write .approval-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.approval-github-write .approval-file-path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-success-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.approval-github-write .approval-file-path-icon {
+  color: var(--color-success-text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.approval-github-write .approval-file-path code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.approval-github-write .approval-file-branch,
+.approval-github-write .approval-file-message {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: 13px;
+}
+
+.approval-github-write .approval-file-branch code {
+  font-family: var(--font-mono);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+/* Code preview section */
+.approval-code-preview {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.approval-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-default);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.approval-code-lines {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: normal;
+}
+
+.approval-code-content {
+  max-height: 400px;
+  overflow: auto;
+  background: var(--color-bg-primary);
+}
+
+.approval-code-content pre {
+  margin: 0;
+  padding: var(--space-3);
+}
+
+.approval-code-content code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* ============================================
+ * Short Field Comments
+ * ============================================ */
+
+.approval-field-short {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Editable field (input with comment support) */
+.approval-field-editable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.approval-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Editable field label - fixed width, left-aligned */
+.approval-field-editable .approval-field-label {
+  width: 60px;
+  flex-shrink: 0;
+  text-align: left;
+}
+
+/* Editable field input */
+.approval-field-input {
+  flex: 1;
+  padding: var(--space-2);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.approval-field-input:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+}
+
+.approval-field-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.approval-field-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Show add comment on hover for editable fields */
+.approval-field-editable:hover .approval-field-add-comment {
+  opacity: 1;
+}
+
+.approval-field-add-comment {
+  padding: 2px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.approval-field-short:hover .approval-field-add-comment {
+  opacity: 1;
+}
+
+.approval-field-add-comment:hover {
+  color: var(--color-accent-primary);
+  background: var(--color-bg-secondary);
+}
+
+/* Field comment input */
+.approval-field-comment-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+}
+
+.approval-field-comment-input input {
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.approval-field-comment-input input:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+}
+
+.approval-field-comment-input input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.approval-field-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.approval-field-comment-actions button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.approval-field-comment-actions button:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.approval-field-comment-actions button.primary {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
+.approval-field-comment-actions button.primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.approval-field-comment-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Existing field comment */
+.approval-field-comment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-left: 3px solid #3b82f6;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.approval-field-comment-content {
+  flex: 1;
+  color: var(--color-text-primary);
+}
+
+.approval-field-comment-edit,
+.approval-field-comment-remove {
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.approval-field-comment:hover .approval-field-comment-edit,
+.approval-field-comment:hover .approval-field-comment-remove {
+  opacity: 1;
+}
+
+.approval-field-comment-edit:hover {
+  color: var(--color-accent-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.approval-field-comment-remove:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ============================================
+ * Approval Footer (shared component)
+ * ============================================ */
+
+.approval-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-default);
+}
+
+/* Footer actions */
+.approval-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.approval-footer-primary-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ============================================
+   Mobile Styles
+   ============================================ */
+@media (max-width: 767px) {
+  .approval-card {
+    gap: var(--space-3);
+  }
+
+  .approval-header {
+    padding-bottom: var(--space-2);
+  }
+
+  .approval-title {
+    font-size: 14px;
+  }
+
+  .approval-fields {
+    gap: var(--space-3);
+  }
+
+  .approval-field-value {
+    max-height: 150px;
+    font-size: 14px;
+  }
+
+  /* Main approval actions - stack with primary on top */
+  .approval-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+  }
+
+  .approval-actions > * {
+    width: 100%;
+  }
+
+  /* Footer actions - stack */
+  .approval-footer-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-3);
+  }
+
+  .approval-footer-primary-actions {
+    flex-direction: column-reverse;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .approval-footer-primary-actions > * {
+    width: 100%;
+  }
+
+  /* Code preview */
+  .approval-code-content {
+    max-height: 250px;
+  }
+
+  .approval-code-content code {
+    font-size: 11px;
+  }
+
+  /* Always show comment buttons on mobile */
+  .approval-field-add-comment {
+    opacity: 1;
+  }
+
+  .approval-field-comment-edit,
+  .approval-field-comment-remove {
+    opacity: 1;
+  }
+
+  /* Field input */
+  .approval-field-input {
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+
+  .approval-field-comment-input input {
+    font-size: 16px;
+  }
+}

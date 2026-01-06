@@ -1,0 +1,594 @@
+.task-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.task-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Footer */
+.task-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.task-modal-footer-right {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Delete action */
+.delete-action {
+  display: flex;
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+.delete-action > * {
+  animation: fadeSlideIn 0.15s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Agent Section - wrapper for AgentSection component or WorkflowProgress */
+.task-modal-agent {
+  /* No padding here - AgentSection handles its own styling */
+}
+
+.task-modal-error {
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.task-modal-execution {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.task-modal-execution-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* Workflow Section */
+.task-modal-generating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.generating-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.task-modal-workflow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.workflow-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workflow-status-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.workflow-status-value {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.workflow-status-value.planning {
+  background: var(--color-info-subtle);
+  color: var(--color-info-text);
+}
+
+.workflow-status-value.draft {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+
+.workflow-status-value.approved,
+.workflow-status-value.executing {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.workflow-status-value.checkpoint {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+
+.workflow-status-value.completed {
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+
+.workflow-status-value.failed {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+}
+
+.workflow-view-btn {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-2);
+  background: none;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.workflow-view-btn:hover {
+  background: var(--color-bg-subtle);
+  border-color: var(--color-border-emphasis);
+  color: var(--color-text-primary);
+}
+
+/* Workflow Artifacts */
+.workflow-artifacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.workflow-artifact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text-primary);
+  transition: all 0.15s ease;
+}
+
+.workflow-artifact:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+}
+
+.workflow-artifact-icon {
+  font-size: var(--text-base);
+}
+
+.workflow-artifact-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workflow-dismiss {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* Inline workflow generating state */
+.workflow-generating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.workflow-generating-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--color-accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.workflow-generating-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* View-specific styles */
+.task-modal.view-execution-review,
+.task-modal.view-checkpoint-review {
+  height: 100%;
+}
+
+/* Checkpoint Review View */
+.checkpoint-review-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.checkpoint-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.checkpoint-icon {
+  font-size: 14px;
+  color: #f59e0b;
+}
+
+.checkpoint-step-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.checkpoint-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.checkpoint-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.checkpoint-artifacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.checkpoint-artifact {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  transition: all 0.15s ease;
+}
+
+.checkpoint-artifact:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+.checkpoint-artifact svg {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+.checkpoint-artifact-title {
+  font-weight: 500;
+}
+
+.checkpoint-artifact-arrow {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.checkpoint-next-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.checkpoint-next-name {
+  color: var(--color-text-primary);
+}
+
+.checkpoint-next-server {
+  font-size: 10px;
+  padding: 1px 4px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+}
+
+.checkpoint-action-section {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  border: 1px solid var(--color-primary);
+}
+
+.checkpoint-next-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.checkpoint-action-icon {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.checkpoint-action-name {
+  color: var(--color-text-primary);
+}
+
+.checkpoint-prepared-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.checkpoint-content-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkpoint-content-item + .checkpoint-content-item {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.checkpoint-content-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-muted);
+}
+
+.checkpoint-content-value {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.checkpoint-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-default);
+}
+
+/* Approval UI */
+.approval-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.approval-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.approval-icon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.approval-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.approval-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.approval-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.approval-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.approval-field-value {
+  padding: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-default);
+}
+
+
+/* ============================================
+   Mobile Styles
+   ============================================ */
+@media (max-width: 767px) {
+  .task-modal {
+    gap: var(--space-3);
+  }
+
+  .task-modal-form {
+    gap: var(--space-3);
+  }
+
+  /* Footer - reorganize for mobile */
+  .task-modal-footer {
+    flex-direction: column-reverse;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    padding-bottom: env(safe-area-inset-bottom, var(--space-4));
+  }
+
+  /* Cancel/Save row - side by side */
+  .task-modal-footer-right {
+    display: flex;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .task-modal-footer-right > * {
+    flex: 1;
+  }
+
+  /* Delete at bottom, full width, less prominent */
+  .delete-action {
+    width: 100%;
+    order: -1;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .delete-action > * {
+    width: 100%;
+  }
+
+  /* Workflow section */
+  .workflow-generating {
+    padding: var(--space-4);
+  }
+
+  .workflow-status {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .workflow-view-btn {
+    width: 100%;
+    margin-left: 0;
+    margin-top: var(--space-2);
+    text-align: center;
+  }
+
+  /* Checkpoint actions */
+  .checkpoint-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .checkpoint-actions > * {
+    width: 100%;
+  }
+
+  /* Approval */
+  .approval-header {
+    flex-wrap: wrap;
+  }
+
+  .approval-title {
+    font-size: 14px;
+  }
+
+  .approval-field-value {
+    max-height: 150px;
+    font-size: 14px;
+  }
+
+  .approval-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .approval-actions > * {
+    width: 100%;
+  }
+
+  /* Checkpoint review */
+  .checkpoint-prepared-content {
+    max-height: 150px;
+  }
+
+  .checkpoint-artifact {
+    font-size: 12px;
+    padding: var(--space-2);
+  }
+}

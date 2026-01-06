@@ -1,0 +1,310 @@
+.column {
+  width: var(--column-width);
+  min-width: var(--column-width);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--header-height) - var(--space-8));
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.column-drag-over {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-muted);
+}
+
+.column-drop-target {
+  border-color: var(--color-accent-primary);
+  border-style: dashed;
+}
+
+.column[draggable="true"] {
+  cursor: grab;
+}
+
+.column[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Header */
+.column-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.column-prompt {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.column-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.column-name {
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: var(--border-radius);
+  transition: background var(--transition-fast);
+}
+
+.column-name:hover {
+  background: var(--color-bg-secondary);
+}
+
+.column-name-input {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--border-radius);
+  padding: 2px 4px;
+  margin: -3px -5px;
+  outline: none;
+  min-width: 80px;
+  flex: 1;
+}
+
+.column-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary);
+  padding: 2px 6px;
+  border-radius: var(--border-radius);
+}
+
+/* Column Menu */
+.column-menu-wrapper {
+  position: relative;
+  margin-left: auto;
+}
+
+.column-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+  opacity: 0;
+}
+
+.column-header:hover .column-menu-btn,
+.column-menu-btn:focus {
+  opacity: 1;
+}
+
+.column-menu-btn:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.column-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 120px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+  padding: var(--space-1);
+}
+
+.column-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.column-menu-item:hover {
+  background: var(--color-bg-secondary);
+}
+
+.column-menu-item-danger {
+  color: var(--color-danger);
+}
+
+.column-menu-item-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.column-menu-confirm {
+  padding: var(--space-2);
+}
+
+.column-menu-confirm-text {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.column-menu-confirm-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Tasks List */
+.column-tasks {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Add Button */
+.column-add-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.column-add-btn:hover {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  background: var(--color-accent-muted);
+}
+
+/* Add Form */
+.column-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+}
+
+.column-add-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ============================================
+   Mobile Styles
+   ============================================ */
+@media (max-width: 767px) {
+  .column {
+    width: 100%;
+    min-width: 100%;
+    max-height: calc(100vh - var(--header-height) - var(--space-4));
+    max-height: calc(100dvh - var(--header-height) - var(--space-4));
+  }
+
+  /* Disable drag cursor on mobile */
+  .column[draggable="true"] {
+    cursor: default;
+  }
+
+  .column[draggable="true"]:active {
+    cursor: default;
+  }
+
+  /* Column header */
+  .column-header {
+    padding: var(--space-3);
+    min-height: var(--touch-target-min);
+  }
+
+  .column-name {
+    font-size: 14px;
+    padding: var(--space-2);
+    margin: calc(-1 * var(--space-2));
+  }
+
+  .column-name-input {
+    font-size: 16px; /* Prevent iOS zoom */
+    min-height: var(--touch-target-min);
+  }
+
+  /* Always show menu button on mobile */
+  .column-menu-btn {
+    opacity: 1;
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    font-size: 18px;
+  }
+
+  .column-menu {
+    min-width: 160px;
+  }
+
+  .column-menu-item {
+    min-height: var(--touch-target-min);
+    padding: var(--space-3);
+    font-size: 14px;
+  }
+
+  .column-menu-confirm-actions {
+    flex-direction: row;
+    gap: var(--space-2);
+  }
+
+  .column-menu-confirm-actions .column-menu-item {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* Tasks list */
+  .column-tasks {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-3);
+  }
+
+  /* Add task button */
+  .column-add-btn {
+    min-height: var(--touch-target-min);
+    padding: var(--space-3);
+    font-size: 14px;
+  }
+
+  /* Add form */
+  .column-add-form {
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .column-add-actions {
+    gap: var(--space-3);
+  }
+}

@@ -1,0 +1,178 @@
+.board {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  padding: var(--space-4);
+  background: var(--color-bg-secondary);
+}
+
+.board-columns {
+  display: flex;
+  gap: var(--column-gap);
+  align-items: flex-start;
+}
+
+.column-wrapper {
+  display: flex;
+}
+
+/* Add Column Button */
+.add-column-btn {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  padding-top: 14px;
+  align-self: stretch;
+  min-height: 80px;
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0.3;
+}
+
+.add-column-btn:hover {
+  opacity: 1;
+  color: var(--color-accent-primary);
+  background: var(--color-accent-muted);
+}
+
+.add-column-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Loading State */
+.board-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+}
+
+.loading-text {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.loading-text::after {
+  content: '';
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
+
+/* Empty State */
+.board-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+}
+
+.empty-content {
+  text-align: center;
+  max-width: 320px;
+}
+
+.empty-icon {
+  display: block;
+  font-size: 32px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* ============================================
+   Mobile Styles - Horizontal Snap Scrolling
+   ============================================ */
+@media (max-width: 767px) {
+  .board {
+    padding: var(--space-2) 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .board::-webkit-scrollbar {
+    display: none;
+  }
+
+  .board-columns {
+    gap: 0;
+    padding: 0 var(--space-mobile-gutter);
+  }
+
+  .column-wrapper {
+    flex: 0 0 auto;
+    width: var(--mobile-column-width);
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    padding: 0 var(--space-1);
+  }
+
+  /* Add column button - full card style */
+  .add-column-btn {
+    flex: 0 0 auto;
+    width: var(--mobile-column-width);
+    min-width: var(--mobile-column-width);
+    min-height: 120px;
+    margin-right: var(--space-mobile-gutter);
+    scroll-snap-align: center;
+    opacity: 0.6;
+    border: 2px dashed var(--color-border-default);
+    background: var(--color-bg-tertiary);
+    padding-top: var(--space-6);
+    align-items: flex-start;
+  }
+
+  .add-column-btn:active {
+    opacity: 1;
+    background: var(--color-accent-muted);
+    border-color: var(--color-accent-primary);
+  }
+
+  .add-column-icon {
+    font-size: 24px;
+  }
+
+  /* Empty/loading states */
+  .board-empty,
+  .board-loading {
+    padding: var(--space-4);
+  }
+
+  .empty-content {
+    max-width: 100%;
+    padding: 0 var(--space-4);
+  }
+}

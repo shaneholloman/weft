@@ -1,0 +1,617 @@
+/**
+ * Google Sheets Approval View Styles
+ *
+ * Row-based diff layout for spreadsheet approval.
+ * Shows data in table format with cell columns.
+ */
+
+.sheets-approval-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 500px;
+}
+
+/* Header */
+.sheets-approval-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+}
+
+.sheets-approval-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sheets-approval-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sheets-approval-title h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.sheets-approval-doc-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+
+.sheets-approval-doc-name {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.sheets-approval-sheet-name {
+  color: var(--color-text-muted);
+}
+
+/* Editable title (for create spreadsheet) */
+.sheets-approval-editable-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 450px;
+}
+
+.sheets-approval-title-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.sheets-approval-title-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sheets-approval-title-input {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+.sheets-approval-title-input:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.sheets-approval-title-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sheets-approval-add-comment {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sheets-approval-title-input-row:hover .sheets-approval-add-comment {
+  opacity: 1;
+}
+
+.sheets-approval-add-comment:hover {
+  color: var(--color-accent-primary);
+}
+
+/* Title comment input */
+.sheets-approval-title-comment-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent-primary);
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: var(--radius-sm);
+}
+
+.sheets-approval-title-comment-input input {
+  width: 100%;
+  padding: var(--space-2);
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.sheets-approval-title-comment-input input:focus {
+  outline: none;
+}
+
+.sheets-approval-title-comment-input input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.sheets-approval-title-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.sheets-approval-title-comment-actions button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.sheets-approval-title-comment-actions button:first-child {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.sheets-approval-title-comment-actions button:first-child:hover {
+  color: var(--color-text-primary);
+}
+
+.sheets-approval-title-comment-actions button.primary {
+  background: var(--color-accent-primary);
+  color: white;
+  font-weight: 500;
+}
+
+.sheets-approval-title-comment-actions button.primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.sheets-approval-title-comment-actions button.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Existing title comment */
+.sheets-approval-title-comment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-left: 3px solid #3b82f6;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.sheets-approval-title-comment-content {
+  flex: 1;
+  color: var(--color-text-primary);
+}
+
+.sheets-approval-title-comment-edit,
+.sheets-approval-title-comment-remove {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sheets-approval-title-comment:hover .sheets-approval-title-comment-edit,
+.sheets-approval-title-comment:hover .sheets-approval-title-comment-remove {
+  opacity: 1;
+}
+
+.sheets-approval-title-comment-edit:hover {
+  color: var(--color-accent-primary);
+}
+
+.sheets-approval-title-comment-remove:hover {
+  color: #ef4444;
+}
+
+.sheets-approval-stats {
+  display: flex;
+  gap: var(--space-3);
+  font-size: 12px;
+}
+
+.sheets-approval-stats .stat-current {
+  color: var(--color-text-muted);
+}
+
+.sheets-approval-stats .stat-additions {
+  color: #22c55e;
+}
+
+.sheets-approval-stats .stat-deletions {
+  color: #ef4444;
+}
+
+/* Content - side by side */
+.sheets-approval-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sheets-approval-content.single-panel {
+  grid-template-columns: 1fr;
+}
+
+/* Panels */
+.sheets-approval-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--color-border-default);
+}
+
+.sheets-approval-panel:last-child {
+  border-right: none;
+}
+
+.sheets-approval-panel-header {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+}
+
+.sheets-approval-panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sheets-approval-panel-current .sheets-approval-panel-header {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.sheets-approval-panel-after .sheets-approval-panel-header {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.sheets-approval-panel-after .sheets-approval-panel-label {
+  color: #22c55e;
+}
+
+.sheets-approval-panel-body {
+  flex: 1;
+  overflow: auto;
+  background: var(--color-bg-primary);
+}
+
+.sheets-approval-empty-panel {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 13px;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+/* Table */
+.sheets-table {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Rows */
+.sheets-row-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheets-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 32px;
+  border-bottom: 1px solid var(--color-border-default);
+  user-select: none;
+  cursor: pointer;
+}
+
+.sheets-row:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.sheets-row:hover .sheets-comment-indicator.can-comment {
+  opacity: 1;
+}
+
+.sheets-row.selected {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+/* Row number */
+.sheets-row-number {
+  width: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-tertiary);
+  border-right: 1px solid var(--color-border-default);
+}
+
+/* Cells container */
+.sheets-row-cells {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+/* Individual cell */
+.sheets-cell {
+  flex: 1;
+  min-width: 80px;
+  max-width: 200px;
+  padding: var(--space-2) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-primary);
+  border-right: 1px solid var(--color-border-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheets-cell:last-child {
+  border-right: none;
+}
+
+/* Comment indicator */
+.sheets-comment-indicator {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sheets-comment-indicator.has-comment {
+  opacity: 1;
+  color: var(--color-accent-primary);
+}
+
+/* Placeholder rows for padding (to align both sides) */
+.sheets-row-placeholder {
+  background: var(--color-bg-secondary);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sheets-row-placeholder:hover {
+  background: var(--color-bg-secondary);
+}
+
+.sheets-row-placeholder .sheets-row-number {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.sheets-row-placeholder .sheets-cell {
+  color: transparent;
+}
+
+/* Diff status styling */
+.sheets-row-added {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.sheets-row-added:hover {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.sheets-row-added .sheets-comment-indicator {
+  color: #22c55e;
+}
+
+.sheets-row-added .sheets-row-number {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.sheets-row-removed {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.sheets-row-removed:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.sheets-row-removed .sheets-cell {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+.sheets-row-removed .sheets-row-number {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* Diff marker for removed rows */
+.sheets-diff-marker {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+/* Comment input */
+.sheets-comment-input {
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent-primary);
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.sheets-comment-input textarea {
+  width: 100%;
+  padding: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  resize: none;
+  min-height: 48px;
+}
+
+.sheets-comment-input textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.sheets-comment-input textarea:focus {
+  outline: none;
+}
+
+.sheets-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.sheets-comment-actions button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.sheets-comment-actions button:first-child {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.sheets-comment-actions button:first-child:hover {
+  color: var(--color-text-primary);
+}
+
+.sheets-comment-actions button.primary {
+  background: var(--color-accent-primary);
+  color: white;
+  font-weight: 500;
+}
+
+.sheets-comment-actions button.primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.sheets-comment-actions button.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Existing comment display */
+.sheets-comment {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-left: 3px solid #3b82f6;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.sheets-comment-rows {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding: 2px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 10px;
+  align-self: flex-start;
+}
+
+.sheets-comment-content {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sheets-comment-remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.sheets-comment:hover .sheets-comment-remove {
+  opacity: 1;
+}
+
+.sheets-comment-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Footer override */
+.sheets-approval-view .approval-footer {
+  padding: var(--space-3) var(--space-4);
+}

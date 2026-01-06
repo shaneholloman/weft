@@ -1,0 +1,106 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "weft-dev",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-12-10",
+  "workers_dev": true,
+  "preview_urls": false,
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "vars": {
+    "AUTH_MODE": "none",
+    "USER_ID": "dev-user",
+    "USER_EMAIL": "dev@localhost",
+  },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "workflows": [
+    {
+      "name": "agent-workflow",
+      "binding": "AGENT_WORKFLOW",
+      "class_name": "AgentWorkflow",
+    },
+  ],
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      "instance_type": "standard-3",
+      "max_instances": 10,
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BOARD_DO",
+        "class_name": "BoardDO",
+      },
+      {
+        "name": "USER_DO",
+        "class_name": "UserDO",
+      },
+      {
+        "name": "SANDBOX",
+        "class_name": "Sandbox",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["BoardDO", "Sandbox"],
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["UserDO"],
+    },
+  ],
+  "env": {
+    "production": {
+      "name": "weft",
+      "vars": {
+        // AUTH_MODE: "none" = single user, no auth required
+        // AUTH_MODE: "access" = multi-user with Cloudflare Access (set ACCESS_AUD/ACCESS_TEAM secrets)
+        "AUTH_MODE": "none",
+        "USER_ID": "user",
+        "USER_EMAIL": "user@localhost",
+      },
+      "workflows": [
+        {
+          "name": "weft-agent-workflow",
+          "binding": "AGENT_WORKFLOW",
+          "class_name": "AgentWorkflow",
+        },
+      ],
+      "containers": [
+        {
+          "name": "weft-production-sandbox",
+          "class_name": "Sandbox",
+          "image": "./Dockerfile",
+          "instance_type": "standard-3",
+          "max_instances": 10,
+        },
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "BOARD_DO",
+            "class_name": "BoardDO",
+          },
+          {
+            "name": "USER_DO",
+            "class_name": "UserDO",
+          },
+          {
+            "name": "SANDBOX",
+            "class_name": "Sandbox",
+          },
+        ],
+      },
+    },
+  },
+}

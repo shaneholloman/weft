@@ -1,0 +1,283 @@
+/**
+ * CommentableText Styles
+ *
+ * Styles for line-selectable text with inline comments.
+ * Similar visual language to DiffViewer for consistency.
+ */
+
+.commentable-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.commentable-text-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.commentable-text-content {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.commentable-text-line-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.commentable-text-line {
+  display: flex;
+  line-height: 1.5;
+  min-height: 24px;
+  user-select: none;
+}
+
+.commentable-text-line.selectable {
+  cursor: pointer;
+}
+
+.commentable-text-line.selectable:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.commentable-text-line.selectable:hover .commentable-text-comment-indicator.can-comment {
+  opacity: 1;
+}
+
+.commentable-text-line.selected {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.commentable-text-line.selected .commentable-text-line-number {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--color-text-primary);
+}
+
+.commentable-text-line-number {
+  width: 40px;
+  padding: 0 var(--space-2);
+  text-align: right;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.commentable-text-line-content {
+  flex: 1;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Comment indicator column */
+.commentable-text-comment-indicator {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.commentable-text-comment-indicator.has-comment {
+  opacity: 1;
+  color: var(--color-accent-primary);
+}
+
+/* Comment input form */
+.commentable-text-comment-input {
+  margin: var(--space-2) var(--space-3);
+  margin-left: 56px;
+  padding: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent-primary);
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.commentable-text-comment-textarea {
+  width: 100%;
+  padding: var(--space-2);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  resize: none;
+  min-height: 36px;
+  line-height: 1.4;
+}
+
+.commentable-text-comment-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.commentable-text-comment-textarea:focus {
+  outline: none;
+}
+
+.commentable-text-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.commentable-text-comment-cancel {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.commentable-text-comment-cancel:hover {
+  color: var(--color-text-primary);
+}
+
+.commentable-text-comment-submit {
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--color-accent-primary);
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.commentable-text-comment-submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.commentable-text-comment-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Existing comment display - GitHub PR style */
+.commentable-text-comment {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  margin-left: 56px;
+  padding: var(--space-3);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-left: 3px solid #3b82f6;
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.commentable-text-comment-lines {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  padding: 2px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 10px;
+  align-self: flex-start;
+}
+
+.commentable-text-comment-content {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.commentable-text-comment-remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commentable-text-comment:hover .commentable-text-comment-remove {
+  opacity: 1;
+}
+
+.commentable-text-comment-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* =============================================================================
+   Prose Variant - Document-like display for emails and text content
+   ============================================================================= */
+
+.commentable-text-prose .commentable-text-content {
+  padding: var(--space-3);
+}
+
+.commentable-text-prose .commentable-text-line {
+  min-height: auto;
+  padding: var(--space-1) 0;
+}
+
+.commentable-text-prose .commentable-text-line-content {
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+}
+
+.commentable-text-prose .commentable-text-line.selectable:hover {
+  background: rgba(59, 130, 246, 0.04);
+  border-radius: var(--radius-sm);
+}
+
+.commentable-text-prose .commentable-text-line.selected {
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* Adjust comment input position for prose mode */
+.commentable-text-prose .commentable-text-comment-input {
+  margin-left: var(--space-2);
+}
+
+/* Adjust existing comment position for prose mode */
+.commentable-text-prose .commentable-text-comment {
+  margin-left: var(--space-2);
+}

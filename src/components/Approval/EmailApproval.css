@@ -1,0 +1,254 @@
+/**
+ * Email Approval View Styles
+ *
+ * Email-client style layout for Gmail send/draft approvals.
+ */
+
+.email-approval-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* Header */
+.email-approval-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+}
+
+.email-approval-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Recipients Section */
+.email-approval-recipients {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-primary);
+}
+
+.email-recipient-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.email-recipient-field + .email-recipient-field {
+  margin-top: var(--space-2);
+}
+
+.email-recipient-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+}
+
+.email-recipient-label {
+  width: 60px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.email-recipient-input {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.email-recipient-input:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-default);
+}
+
+.email-recipient-input:focus {
+  outline: none;
+  background: var(--color-bg-primary);
+  border-color: var(--color-border-focus);
+}
+
+.email-recipient-input:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.email-recipient-add-comment {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.email-recipient-row:hover .email-recipient-add-comment {
+  opacity: 1;
+}
+
+.email-recipient-add-comment:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+/* Field comment input */
+.email-recipient-comment-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  margin-left: 48px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.email-recipient-comment-input input {
+  padding: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.email-recipient-comment-input input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+}
+
+.email-recipient-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.email-recipient-comment-actions button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+}
+
+.email-recipient-comment-actions button:first-child {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.email-recipient-comment-actions button:first-child:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.email-recipient-comment-actions button.primary {
+  background: var(--color-accent-primary);
+  color: white;
+  font-weight: 500;
+}
+
+.email-recipient-comment-actions button.primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.email-recipient-comment-actions button.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Existing field comment */
+.email-recipient-comment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-left: 68px;
+  margin-top: var(--space-1);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-left: 3px solid #3b82f6;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.email-recipient-comment-content {
+  flex: 1;
+  color: var(--color-text-primary);
+}
+
+.email-recipient-comment-edit,
+.email-recipient-comment-remove {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.email-recipient-comment-edit:hover,
+.email-recipient-comment-remove:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+/* Subject Section */
+.email-approval-subject {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-primary);
+}
+
+.email-approval-subject .email-recipient-input {
+  font-weight: 600;
+}
+
+/* Body Section */
+.email-approval-body {
+  flex: 1;
+  min-height: 0; /* Required for flex child to scroll */
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-primary);
+}
+
+.email-approval-body .commentable-text {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.email-approval-body .commentable-text-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Footer override for edge-to-edge layout */
+.email-approval-view .approval-footer {
+  padding: var(--space-3) var(--space-4);
+}

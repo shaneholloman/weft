@@ -1,0 +1,207 @@
+/**
+ * GitHub PR Approval View Styles
+ *
+ * Full-width diff viewer layout for PR approval.
+ * Similar to ExecutionReviewView but integrated as an approval component.
+ */
+
+.pr-approval-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 500px;
+}
+
+/* Header */
+.pr-approval-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+}
+
+.pr-approval-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pr-approval-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pr-approval-title h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.pr-approval-repo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pr-approval-repo code {
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.pr-approval-branch-arrow {
+  color: var(--color-text-muted);
+}
+
+.pr-approval-branch-into {
+  color: var(--color-text-muted);
+}
+
+.pr-approval-branch {
+  color: var(--color-primary);
+}
+
+.pr-approval-stats {
+  display: flex;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.pr-approval-stats .stat-files {
+  color: var(--color-text-secondary);
+}
+
+.pr-approval-stats .stat-additions {
+  color: #22c55e;
+}
+
+.pr-approval-stats .stat-deletions {
+  color: #ef4444;
+}
+
+/* Content */
+.pr-approval-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Empty state when no diff */
+.pr-approval-content-empty {
+  flex: 0;
+  min-height: 120px;
+}
+
+.pr-approval-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.pr-approval-empty-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.pr-approval-empty-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.pr-approval-empty-message {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+  max-width: 300px;
+}
+
+.pr-approval-sidebar {
+  width: 220px;
+  border-right: 1px solid var(--color-border-default);
+  overflow-y: auto;
+  background: var(--color-bg-secondary);
+}
+
+.pr-approval-diff {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+/* Footer */
+.pr-approval-footer {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+}
+
+.pr-approval-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pr-approval-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pr-approval-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pr-approval-textarea {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.pr-approval-textarea:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+}
+
+.pr-approval-textarea:disabled {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.pr-approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
