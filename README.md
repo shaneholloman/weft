@@ -8,7 +8,7 @@ Task management, but AI agents do your tasks.
 
 Weft is a personal task board where AI agents work on your tasks. Create a task, assign it to an agent, and it gets to work. Agents can read your emails, draft responses, update spreadsheets, create PRs, and write code.
 
-Run as many agents in parallel as you want. Get notified when tasks complete or need your approval. All actions that mutate state (sending emails, creating PRs, modifying documents) require your approval before committing.
+Run as many agents in parallel as you want. Schedule recurring tasks to run daily or weekly. Get notified when tasks complete or need your approval. All actions that mutate state (sending emails, creating PRs, modifying documents) require your approval before committing.
 
 **Built-in integrations:**
 - Gmail (read, draft, send)

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef, type ClipboardEvent } from 'react';
-import type { Task, WorkflowPlan, WorkflowArtifact } from '../../types';
+import type { Task, WorkflowPlan, WorkflowArtifact, ScheduleConfig as ScheduleConfigType } from '../../types';
 import { useBoard } from '../../context/BoardContext';
 import { Modal, Button, Input, RichTextEditor } from '../common';
 import { PlanReviewView, WorkflowProgress, EmailViewer } from '../Workflow';
 import { getApprovalView } from '../Approval';
 import { AgentSection } from './AgentSection';
+import { RunHistory } from './RunHistory';
 import { useUrlDetection, extractUrl } from '../../hooks';
 import * as api from '../../api/client';
 import './TaskModal.css';
@@ -22,14 +23,19 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     activeBoard,
     updateTask,
     deleteTask,
+    getTaskById,
     getWorkflowPlan: getWorkflowPlanFromContext,
     updateWorkflowPlan: updateWorkflowPlanInContext,
     removeWorkflowPlan: removeWorkflowPlanFromContext,
   } = useBoard();
 
+  // Get parent task if this is a child task
+  const parentTask = task.parentTaskId ? getTaskById(task.parentTaskId) : null;
+
   const [currentView, setCurrentView] = useState<TaskModalView>('main');
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfigType | undefined>(task.scheduleConfig);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -39,6 +45,8 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
   const [isRespondingToCheckpoint, setIsRespondingToCheckpoint] = useState(false);
   const [selectedEmailArtifact, setSelectedEmailArtifact] = useState<WorkflowArtifact | null>(null);
+  const [isRunHistoryOpen, setIsRunHistoryOpen] = useState(false);
+  const [childTasks, setChildTasks] = useState<Task[]>([]);
 
   const { pendingUrl, isLoading: isCheckingUrl, checkUrl, clear: clearPendingUrl, toPillSyntax } = useUrlDetection(task.boardId);
   const [pastedUrl, setPastedUrl] = useState<string | null>(null);
@@ -54,9 +62,12 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
       setCurrentView('main');
       setTitle(task.title);
       setDescription(task.description || '');
+      setScheduleConfig(task.scheduleConfig);
       setConfirmingDelete(false);
       setWorkflowError(null);
       setSelectedEmailArtifact(null);
+      setIsRunHistoryOpen(false);
+      setChildTasks([]);
       clearPendingUrl();
       setPastedUrl(null);
       setPastedUrlEndIndex(null);
@@ -72,12 +83,25 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
             updateWorkflowPlanInContext(result.data);
           }
         });
+
+        // Fetch child tasks for scheduled tasks
+        if (task.scheduleConfig?.enabled) {
+          api.getChildTasks(activeBoard.id, task.id).then((result) => {
+            if (result.success && result.data) {
+              // Sort by createdAt desc and take recent ones
+              const sorted = result.data.sort((a, b) =>
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+              setChildTasks(sorted.slice(0, 10));
+            }
+          });
+        }
       }
     } else {
       wasOpenRef.current = false;
       setCurrentView('main');
     }
-  }, [isOpen, task.id, task.title, task.description, activeBoard, updateWorkflowPlanInContext]);
+  }, [isOpen, task.id, task.title, task.description, task.scheduleConfig, activeBoard, updateWorkflowPlanInContext]);
 
   // Sync local state from context (WebSocket updates)
   useEffect(() => {
@@ -115,6 +139,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     await updateTask(task.id, {
       title,
       description,
+      scheduleConfig: scheduleConfig || null,
     });
     setIsSaving(false);
     onClose();
@@ -187,6 +212,10 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     setPastedUrlEndIndex(null);
   }, [clearPendingUrl]);
 
+  const handleScheduleConfigChange = useCallback((config: ScheduleConfigType | null) => {
+    setScheduleConfig(config || undefined);
+  }, []);
+
   const handleStartAgent = async () => {
     setIsGeneratingPlan(true);
     setWorkflowError(null);
@@ -196,6 +225,13 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     }
 
     if (!activeBoard) return;
+
+    // Clear any existing workflow output before starting fresh
+    if (workflowPlan) {
+      await api.deleteWorkflowPlan(activeBoard.id, workflowPlan.id);
+      removeWorkflowPlanFromContext(workflowPlan.id);
+      setWorkflowPlan(null);
+    }
 
     const result = await api.generateWorkflowPlan(activeBoard.id, task.id);
 
@@ -374,40 +410,56 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
           />
         </div>
 
-        {/* Agent Section */}
+        {/* Agent Section - always visible */}
         <div className="task-modal-agent">
           {workflowError && (
             <div className="task-modal-error">{workflowError}</div>
           )}
 
-          {workflowPlan ? (
-            <div className="task-modal-workflow">
-              {/* Use context plan for real-time updates, fallback to local state */}
-              {(() => {
-                const contextPlan = getWorkflowPlanFromContext(workflowPlan.id);
-                const plan = contextPlan || workflowPlan;
-                return (
-                  <WorkflowProgress
-                    plan={plan}
-                    onCancel={handleCancelWorkflow}
-                    onDismiss={handleDismissWorkflow}
-                    onReviewCheckpoint={() => setCurrentView('checkpoint-review')}
-                    onViewEmail={(artifact) => {
-                      setSelectedEmailArtifact(artifact);
-                      setCurrentView('email-view');
-                    }}
-                  />
-                );
-              })()}
-            </div>
-          ) : (
+          {activeBoard && (
             <AgentSection
               boardId={task.boardId}
+              taskId={task.id}
               onRun={handleStartAgent}
               disabled={!description.trim()}
               isRunning={isGeneratingPlan}
+              columns={activeBoard.columns}
+              scheduleConfig={scheduleConfig}
+              onScheduleChange={handleScheduleConfigChange}
+              onViewHistory={() => setIsRunHistoryOpen(true)}
             />
           )}
+
+          {/* Workflow output - shown below AgentSection when present */}
+          {workflowPlan && (() => {
+            const contextPlan = getWorkflowPlanFromContext(workflowPlan.id);
+            const plan = contextPlan || workflowPlan;
+            const isScheduled = !!scheduleConfig?.enabled;
+
+            return (
+              <div className="task-modal-workflow-output">
+                <WorkflowProgress
+                  plan={plan}
+                  onCancel={handleCancelWorkflow}
+                  onDismiss={handleDismissWorkflow}
+                  onReviewCheckpoint={() => setCurrentView('checkpoint-review')}
+                  onViewEmail={!isScheduled ? (artifact) => {
+                    setSelectedEmailArtifact(artifact);
+                    setCurrentView('email-view');
+                  } : undefined}
+                  childTasks={isScheduled ? childTasks : undefined}
+                  onViewTask={isScheduled ? (childTask) => {
+                    // Close this modal first, then open the child task
+                    onClose();
+                    requestAnimationFrame(() => {
+                      window.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: childTask.id } }));
+                    });
+                  } : undefined}
+                  isScheduledTask={isScheduled}
+                />
+              </div>
+            );
+          })()}
         </div>
 
         <div className="task-modal-footer">
@@ -447,6 +499,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   // Use full width for approval views with rich content (PR diffs, Google Docs, Sheets, Emails)
   const FULL_WIDTH_TOOLS = [
     'GitHub__create_pr',
+    'Sandbox__createPullRequest',
     'Google_Docs__createDocument',
     'Google_Docs__appendToDocument',
     'Google_Docs__replaceDocumentContent',
@@ -463,17 +516,42 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const modalWidth = needsFullWidth ? 'full' : 'lg';
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={getModalTitle()}
-      width={modalWidth}
-      showBackButton={showBackButton}
-      onBack={handleBack}
-    >
-      <div className={`task-modal ${currentView !== 'main' ? `view-${currentView}` : ''}`}>
-        {renderContent()}
-      </div>
-    </Modal>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={getModalTitle()}
+        titleBadge={parentTask && currentView === 'main' ? (
+          <button
+            className="modal-parent-badge"
+            onClick={() => {
+              onClose();
+              requestAnimationFrame(() => {
+                window.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parentTask.id } }));
+              });
+            }}
+          >
+            <span className="modal-parent-badge-label">created by</span>
+            <span className="modal-parent-badge-title">{parentTask.title}</span>
+          </button>
+        ) : undefined}
+        width={modalWidth}
+        showBackButton={showBackButton}
+        onBack={handleBack}
+      >
+        <div className={`task-modal ${currentView !== 'main' ? `view-${currentView}` : ''}`}>
+          {renderContent()}
+        </div>
+      </Modal>
+
+      {activeBoard && (
+        <RunHistory
+          boardId={activeBoard.id}
+          taskId={task.id}
+          isOpen={isRunHistoryOpen}
+          onClose={() => setIsRunHistoryOpen(false)}
+        />
+      )}
+    </>
   );
 }

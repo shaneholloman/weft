@@ -10,6 +10,8 @@ import type {
   WorkflowPlan,
   WorkflowLog,
   User,
+  ScheduleConfig,
+  ScheduledRun,
 } from '../types';
 
 const API_BASE = '/api';
@@ -153,6 +155,7 @@ export async function updateTask(
     title?: string;
     description?: string;
     priority?: TaskPriority;
+    scheduleConfig?: ScheduleConfig | null;
   }
 ): Promise<ApiResponse<Task>> {
   return request<Task>(`/boards/${boardId}/tasks/${id}`, {
@@ -547,3 +550,73 @@ export async function getLinkMetadata(
     body: JSON.stringify({ url }),
   });
 }
+
+// ============================================
+// SCHEDULED TASKS
+// ============================================
+
+/**
+ * Get scheduled tasks for a board
+ */
+export async function getScheduledTasks(
+  boardId: string
+): Promise<ApiResponse<Task[]>> {
+  return request<Task[]>(`/boards/${boardId}/scheduled-tasks`);
+}
+
+/**
+ * Get scheduled runs for a task
+ */
+export async function getScheduledRuns(
+  boardId: string,
+  taskId: string,
+  limit?: number
+): Promise<ApiResponse<ScheduledRun[]>> {
+  const params = limit ? `?limit=${limit}` : '';
+  return request<ScheduledRun[]>(`/boards/${boardId}/tasks/${taskId}/runs${params}`);
+}
+
+/**
+ * Get child tasks for a scheduled run
+ */
+export async function getRunTasks(
+  boardId: string,
+  runId: string
+): Promise<ApiResponse<Task[]>> {
+  return request<Task[]>(`/boards/${boardId}/runs/${runId}/tasks`);
+}
+
+/**
+ * Delete a scheduled run from history
+ */
+export async function deleteScheduledRun(
+  boardId: string,
+  runId: string
+): Promise<ApiResponse<void>> {
+  return request<void>(`/boards/${boardId}/runs/${runId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get child tasks for a parent scheduled task
+ */
+export async function getChildTasks(
+  boardId: string,
+  parentTaskId: string
+): Promise<ApiResponse<Task[]>> {
+  return request<Task[]>(`/boards/${boardId}/tasks/${parentTaskId}/children`);
+}
+
+/**
+ * Trigger a scheduled run manually ("Run Now")
+ */
+export async function triggerScheduledRun(
+  boardId: string,
+  taskId: string
+): Promise<ApiResponse<{ runId: string }>> {
+  return request<{ runId: string }>(`/boards/${boardId}/tasks/${taskId}/run`, {
+    method: 'POST',
+  });
+}
+

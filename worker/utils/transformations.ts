@@ -33,9 +33,28 @@ export function transformColumn(column: Record<string, unknown>): Record<string,
 
 /**
  * Transform task record for API response
+ * Parses scheduleConfig and context JSON fields
  */
 export function transformTask(task: Record<string, unknown>): Record<string, unknown> {
-  return toCamelCase(task);
+  const transformed = toCamelCase(task);
+
+  if (typeof transformed.scheduleConfig === 'string' && transformed.scheduleConfig) {
+    try {
+      transformed.scheduleConfig = JSON.parse(transformed.scheduleConfig);
+    } catch {
+      // Leave as string
+    }
+  }
+
+  if (typeof transformed.context === 'string' && transformed.context) {
+    try {
+      transformed.context = JSON.parse(transformed.context);
+    } catch {
+      // Leave as string
+    }
+  }
+
+  return transformed;
 }
 
 /**
@@ -84,6 +103,24 @@ export function transformWorkflowLog(log: Record<string, unknown>): Record<strin
       transformed.metadata = JSON.parse(transformed.metadata);
     } catch {
       // Leave as string
+    }
+  }
+
+  return transformed;
+}
+
+/**
+ * Transform scheduled run record for API response
+ * Parses childTasksInfo JSON if present
+ */
+export function transformScheduledRun(run: Record<string, unknown>): Record<string, unknown> {
+  const transformed = toCamelCase(run);
+
+  if (typeof transformed.childTasksInfo === 'string' && transformed.childTasksInfo) {
+    try {
+      transformed.childTasksInfo = JSON.parse(transformed.childTasksInfo);
+    } catch {
+      transformed.childTasksInfo = [];
     }
   }
 

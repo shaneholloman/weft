@@ -16,6 +16,10 @@ export interface MCPToolSchema {
   annotations?: Record<string, unknown>;
   /** Fields required in approval data when using request_approval for this tool */
   approvalRequiredFields?: string[];
+  /** If true, tool cannot be called without prior approval via request_approval */
+  requiresApproval?: boolean;
+  /** If true, tool is not available in scheduled runs (coordination-only mode) */
+  disabledInScheduledRuns?: boolean;
 }
 
 export interface JSONSchema {

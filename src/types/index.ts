@@ -36,11 +36,44 @@ export interface Task {
   priority: TaskPriority;
   position: number;
   context?: TaskContext;
+  scheduleConfig?: ScheduleConfig;
+  parentTaskId?: string;
+  runId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+
+// ============================================
+// SCHEDULED TASKS
+// ============================================
+
+export interface ScheduleConfig {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'custom';
+  time: string;              // "05:00" (24-hour format)
+  timezone: string;          // "America/Los_Angeles"
+  daysOfWeek?: number[];     // For weekly: [0-6] where 0=Sun
+  cron?: string;             // For custom: "0 5 * * *"
+  targetColumnId: string;    // Where to create child tasks
+}
+
+export type ScheduledRunStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface ScheduledRun {
+  id: string;
+  taskId: string;
+  status: ScheduledRunStatus;
+  startedAt?: string;
+  completedAt?: string;
+  tasksCreated: number;
+  summary?: string;
+  error?: string;
+  createdAt: string;
+  /** Historical record of child tasks created (preserved even after task deletion) */
+  childTasksInfo?: Array<{ id: string; title: string }>;
+}
 
 // ============================================
 // AGENT EXECUTION (Future-Ready)

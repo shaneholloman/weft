@@ -8,7 +8,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import type { Column, Task, DragState, ColumnDragState, TaskPriority, WorkflowPlan, WorkflowLog } from '../types';
+import type { Column, Task, DragState, ColumnDragState, TaskPriority, WorkflowPlan, WorkflowLog, ScheduleConfig } from '../types';
 import * as api from '../api/client';
 import { boardReducer, initialBoardState, type BoardState } from './boardReducer';
 
@@ -27,13 +27,14 @@ interface BoardContextValue extends Omit<BoardState, 'workflowLogs'> {
   updateColumn: (id: string, data: { name?: string; position?: number }) => Promise<void>;
   deleteColumn: (id: string) => Promise<void>;
   createTask: (columnId: string, title: string, description?: string, priority?: TaskPriority) => Promise<void>;
-  updateTask: (id: string, data: { title?: string; description?: string; priority?: TaskPriority }) => Promise<void>;
+  updateTask: (id: string, data: { title?: string; description?: string; priority?: TaskPriority; scheduleConfig?: ScheduleConfig | null }) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   moveTask: (taskId: string, columnId: string, position: number) => Promise<void>;
   moveColumn: (columnId: string, newPosition: number) => Promise<void>;
   setDragState: (state: Partial<DragState>) => void;
   setColumnDragState: (state: Partial<ColumnDragState>) => void;
   getTasksByColumn: (columnId: string) => Task[];
+  getTaskById: (taskId: string) => Task | undefined;
   addingToColumn: string | null;
   setAddingToColumn: (columnId: string | null) => void;
   // Workflow state and methods
@@ -129,6 +130,11 @@ export function BoardProvider({ children }: { children: ReactNode }) {
             const log = message.data as WorkflowLog;
             dispatch({ type: 'ADD_WORKFLOW_LOG', payload: log });
           }
+
+          if (message.type === 'task_created') {
+            const task = message.data.task as Task;
+            dispatch({ type: 'ADD_TASK', payload: task });
+          }
         } catch {
           // Silently ignore malformed messages
         }
@@ -172,10 +178,17 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     return state.workflowPlans[planId] || null;
   }, [state.workflowPlans]);
 
-  // Get workflow plan for a task (searches by taskId)
+  // Get workflow plan for a task - prioritizes active plans, falls back to most recent
   const getTaskWorkflowPlan = useCallback((taskId: string): WorkflowPlan | null => {
-    const plans = Object.values(state.workflowPlans);
-    return plans.find(p => p.taskId === taskId) || null;
+    const plans = Object.values(state.workflowPlans).filter(p => p.taskId === taskId);
+    if (plans.length === 0) return null;
+
+    const activePlan = plans.find(p => p.status === 'executing' || p.status === 'checkpoint');
+    if (activePlan) return activePlan;
+
+    return plans.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
   }, [state.workflowPlans]);
 
   // Update workflow plan in state
@@ -313,7 +326,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
 
   const updateTaskAction = useCallback(async (
     id: string,
-    data: { title?: string; description?: string; priority?: TaskPriority }
+    data: { title?: string; description?: string; priority?: TaskPriority; scheduleConfig?: ScheduleConfig | null }
   ) => {
     if (!state.activeBoard) return;
     const result = await api.updateTask(state.activeBoard.id, id, data);
@@ -409,6 +422,11 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => a.position - b.position);
   }, [state.activeBoard]);
 
+  const getTaskById = useCallback((taskId: string): Task | undefined => {
+    if (!state.activeBoard) return undefined;
+    return state.activeBoard.tasks.find((t) => t.id === taskId);
+  }, [state.activeBoard]);
+
   // Load boards on mount
   useEffect(() => {
     loadBoards();
@@ -439,6 +457,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     setDragState,
     setColumnDragState,
     getTasksByColumn,
+    getTaskById,
     addingToColumn,
     setAddingToColumn,
     activeWorkflows,

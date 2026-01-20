@@ -161,4 +161,65 @@ function runMigrations(sql: SqlStorage): void {
   } catch {
     // Column already exists
   }
+
+  // Add schedule_config column to tasks for scheduled execution
+  try {
+    sql.exec('ALTER TABLE tasks ADD COLUMN schedule_config TEXT');
+  } catch {
+    // Column already exists
+  }
+
+  // Add parent_task_id column to tasks for parent-child relationships
+  try {
+    sql.exec('ALTER TABLE tasks ADD COLUMN parent_task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL');
+  } catch {
+    // Column already exists
+  }
+
+  // Add run_id column to tasks to group tasks from same scheduled run
+  try {
+    sql.exec('ALTER TABLE tasks ADD COLUMN run_id TEXT');
+  } catch {
+    // Column already exists
+  }
+
+  // Create indexes for parent-child and run relationships
+  try {
+    sql.exec('CREATE INDEX idx_tasks_parent ON tasks(parent_task_id)');
+  } catch {
+    // Index already exists
+  }
+  try {
+    sql.exec('CREATE INDEX idx_tasks_run ON tasks(run_id)');
+  } catch {
+    // Index already exists
+  }
+
+  // Create scheduled_runs table to track execution history
+  try {
+    sql.exec(`
+      CREATE TABLE IF NOT EXISTS scheduled_runs (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        started_at TEXT,
+        completed_at TEXT,
+        tasks_created INTEGER DEFAULT 0,
+        summary TEXT,
+        error TEXT,
+        created_at TEXT NOT NULL
+      )
+    `);
+    sql.exec('CREATE INDEX IF NOT EXISTS idx_scheduled_runs_task ON scheduled_runs(task_id)');
+    sql.exec('CREATE INDEX IF NOT EXISTS idx_scheduled_runs_status ON scheduled_runs(status)');
+  } catch {
+    // Table or indexes already exist
+  }
+
+  // Add child_tasks_info column to scheduled_runs to preserve task info even after deletion
+  try {
+    sql.exec('ALTER TABLE scheduled_runs ADD COLUMN child_tasks_info TEXT');
+  } catch {
+    // Column already exists
+  }
 }

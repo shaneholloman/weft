@@ -60,4 +60,5 @@ export const logger = {
   sandbox: createLogger('Sandbox'),
   board: createLogger('BoardService'),
   credential: createLogger('CredentialService'),
+  schedule: createLogger('Schedule'),
 };

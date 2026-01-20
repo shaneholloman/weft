@@ -46,6 +46,11 @@
   }
 }
 
+/* Workflow output section - shows below AgentSection */
+.task-modal-workflow-output {
+  margin-top: var(--space-3);
+}
+
 /* Agent Section - wrapper for AgentSection component or WorkflowProgress */
 .task-modal-agent {
   /* No padding here - AgentSection handles its own styling */
@@ -93,12 +98,6 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.task-modal-workflow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
 }
 
 .workflow-status {

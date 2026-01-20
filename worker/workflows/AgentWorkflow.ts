@@ -40,6 +40,15 @@ export interface AgentWorkflowParams {
   boardId: string;
   taskDescription: string;
   anthropicApiKey: string;
+  // Scheduled run parameters (optional)
+  isScheduledRun?: boolean;
+  runId?: string;
+  targetColumnId?: string;
+  parentTaskId?: string;
+  // Time context for scheduled runs
+  currentTime?: string;   // ISO timestamp of when this run started
+  lastRunAt?: string;     // ISO timestamp of when the last run completed (null if first run)
+  scheduleTimezone?: string; // Timezone for the schedule (e.g., "America/Los_Angeles")
 }
 
 // Event sent to resume from checkpoint
@@ -54,6 +63,7 @@ export interface CheckpointEvent {
 // Uses index signature for dynamic MCP env bindings (Sandbox, GOOGLE_CLIENT_ID, etc.)
 interface WorkflowEnv {
   BOARD_DO: DurableObjectNamespace;
+  AGENT_WORKFLOW: Workflow;
   [key: string]: unknown;
 }
 
@@ -110,6 +120,8 @@ interface MCPServerInfo {
     description: string;
     inputSchema: Record<string, unknown>;
     approvalRequiredFields?: string[];
+    requiresApproval?: boolean;
+    disabledInScheduledRuns?: boolean;
   }>;
 }
 
@@ -144,6 +156,15 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
   async run(event: WorkflowEvent<AgentWorkflowParams>, step: WorkflowStep) {
     const params = event.payload;
     const { planId, boardId, taskDescription, anthropicApiKey } = params;
+    // Scheduled run parameters
+    const isScheduledRun = params.isScheduledRun ?? false;
+    const runId = params.runId;
+    const targetColumnId = params.targetColumnId;
+    const parentTaskId = params.parentTaskId ?? params.taskId;
+    // Time context for scheduled runs
+    const currentTime = params.currentTime;
+    const lastRunAt = params.lastRunAt;
+    const scheduleTimezone = params.scheduleTimezone;
 
     const getBoardStub = (): DurableObjectStub<BoardDO> => {
       const doId = this.env.BOARD_DO.idFromName(boardId);
@@ -193,11 +214,12 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
             transportType: server.transportType as 'streamable-http' | 'sse' | undefined,
             credentialId: server.credentialId || undefined,
             accessToken,
-            tools: tools.map((t: { name: string; description?: string | null; inputSchema: object; approvalRequiredFields?: string[] | null }) => ({
+            tools: tools.map((t: { name: string; description?: string | null; inputSchema: object; approvalRequiredFields?: string[] | null; requiresApproval?: boolean | null }) => ({
               name: t.name,
               description: t.description || '',
               inputSchema: t.inputSchema as Record<string, unknown>,
               approvalRequiredFields: t.approvalRequiredFields || undefined,
+              requiresApproval: t.requiresApproval || undefined,
             })),
           });
         }
@@ -214,6 +236,8 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                 name: t.name,
                 description: t.description || '',
                 inputSchema: t.inputSchema as unknown as Record<string, unknown>,
+                approvalRequiredFields: t.approvalRequiredFields || undefined,
+                requiresApproval: t.requiresApproval || undefined,
               })),
             });
           }
@@ -285,8 +309,12 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
         credentials: CredentialStore;
       };
 
-      const claudeTools = this.buildClaudeTools(mcpConfig.servers);
-      const systemPrompt = this.buildSystemPrompt(mcpConfig.servers);
+      const claudeTools = this.buildClaudeTools(mcpConfig.servers, isScheduledRun);
+      const systemPrompt = this.buildSystemPrompt(mcpConfig.servers, isScheduledRun, {
+        currentTime,
+        lastRunAt,
+        scheduleTimezone,
+      });
       const messages: MessageParam[] = [
         { role: 'user', content: taskDescription },
       ];
@@ -295,6 +323,10 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       const artifacts: WorkflowArtifact[] = [];
       let turnIndex = 0;
       let done = false;
+      let childTasksCreated = 0; // Track child tasks for scheduled runs
+      const childTaskTitles: string[] = []; // Track titles for summary
+      const childTasksInfo: Array<{ id: string; title: string }> = [];
+      const approvedTools = new Set<string>();
 
       while (!done && turnIndex < 50) {
         const currentTurnIndex = turnIndex;
@@ -373,7 +405,8 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
           logger.workflow.error('Plan update failed', { error: e instanceof Error ? e.message : String(e) })
         );
         if (textContent) {
-          addLog('info', textContent.substring(0, 200), agentStep.id).catch(() => {});
+          const truncated = textContent.length > 1500 ? textContent.substring(0, 1500) + '...' : textContent;
+          addLog('info', truncated, agentStep.id).catch(() => {});
         }
 
         messages.push({ role: 'assistant', content: response.content });
@@ -527,6 +560,8 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                   }),
                 });
               } else {
+                approvedTools.add(approvalArgs.tool);
+
                 toolResults.push({
                   type: 'tool_result',
                   tool_use_id: toolUse.id,
@@ -537,6 +572,156 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                   }),
                 });
               }
+            } else if (toolUse.name === 'weft_create_task') {
+              // Handle child task creation with forked agent model
+              // Child tasks are independent agents that run their own workflows
+              const taskArgs = toolUse.input as {
+                title: string;
+                description: string;
+                priority?: 'low' | 'medium' | 'high';
+                context?: {
+                  issueUrl?: string;
+                  priorAnalysis?: string;
+                  constraints?: string[];
+                  [key: string]: unknown;
+                };
+                startWorkflow?: boolean;
+              };
+
+              const shouldStartWorkflow = taskArgs.startWorkflow !== false; // default: true
+
+              const toolResultJson = await step.do(`create-child-task-${toolStepId}`, async () => {
+                if (!targetColumnId) {
+                  return JSON.stringify({
+                    success: false,
+                    error: 'No target column configured for child tasks',
+                  });
+                }
+
+                try {
+                  const stub = getBoardStub();
+
+                  // Create the child task
+                  const childTask = await stub.createTask({
+                    columnId: targetColumnId,
+                    boardId,
+                    title: taskArgs.title,
+                    description: taskArgs.description,
+                    priority: taskArgs.priority || 'medium',
+                    context: taskArgs.context as object | undefined,
+                    parentTaskId,
+                    runId,
+                  }) as { id: string; title: string };
+
+                  const childTaskId = childTask.id;
+                  const childTaskTitle = childTask.title;
+
+                  let workflowStarted = false;
+
+                  // If startWorkflow is true (default), trigger the child's workflow
+                  if (shouldStartWorkflow) {
+                    try {
+                      // Create a workflow plan for the child task
+                      const childPlanId = `plan-${childTaskId}-${Date.now()}`;
+                      await stub.createWorkflowPlan(childTaskId, {
+                        id: childPlanId,
+                        boardId,
+                        steps: [],
+                      });
+
+                      // Build comprehensive task description including context
+                      // The description is what the user sees, context has the details for the agent
+                      let fullTaskDescription = taskArgs.description;
+                      if (taskArgs.context && Object.keys(taskArgs.context).length > 0) {
+                        fullTaskDescription += '\n\n## Context from parent task\n';
+                        fullTaskDescription += JSON.stringify(taskArgs.context, null, 2);
+                      }
+
+                      // Start the child workflow
+                      await this.env.AGENT_WORKFLOW.create({
+                        id: childPlanId,
+                        params: {
+                          planId: childPlanId,
+                          taskId: childTaskId,
+                          boardId,
+                          taskDescription: fullTaskDescription,
+                          anthropicApiKey: mcpConfig.credentials.anthropicApiKey!,
+                          // Child tasks can also create grandchildren if needed
+                          isScheduledRun: false, // Child workflows are not scheduled runs
+                          targetColumnId, // Pass through for potential grandchildren
+                        },
+                      });
+
+                      workflowStarted = true;
+                    } catch (workflowError) {
+                      // Log but don't fail task creation if workflow start fails
+                      const errorMsg = workflowError instanceof Error ? workflowError.message : String(workflowError);
+                      logger.workflow.error('Failed to start child workflow', { childTaskId, error: errorMsg });
+                    }
+                  }
+
+                  await addLog(
+                    'info',
+                    `Created child task: ${taskArgs.title}${workflowStarted ? ' (workflow started)' : ''}`,
+                    toolStepId,
+                    {
+                      type: 'child_task_created',
+                      taskId: childTaskId,
+                      workflowStarted,
+                    }
+                  );
+
+                  return JSON.stringify({
+                    success: true,
+                    taskId: childTaskId,
+                    title: childTaskTitle,
+                    workflowStarted,
+                    message: workflowStarted
+                      ? `Created task "${childTaskTitle}" and started its workflow. The child agent will work independently.`
+                      : `Created task "${childTaskTitle}" in the target column.`,
+                  });
+                } catch (e) {
+                  const error = e instanceof Error ? e.message : String(e);
+                  await addLog('error', `Failed to create child task: ${error}`, toolStepId);
+                  return JSON.stringify({
+                    success: false,
+                    error,
+                  });
+                }
+              });
+
+              const result = JSON.parse(toolResultJson);
+              if (result.success) {
+                childTasksCreated++;
+                childTaskTitles.push(taskArgs.title);
+                childTasksInfo.push({ id: result.taskId, title: result.title || taskArgs.title });
+              }
+
+              const childTaskStep: AgentStep = {
+                id: toolStepId,
+                name: `Fork agent: ${taskArgs.title.substring(0, 25)}${taskArgs.title.length > 25 ? '...' : ''}`,
+                type: 'tool',
+                status: result.success ? 'completed' : 'failed',
+                startedAt: new Date().toISOString(),
+                completedAt: new Date().toISOString(),
+                toolName: 'weft_create_task',
+                toolArgs: taskArgs,
+                result: result.success ? result : undefined,
+                error: result.success ? undefined : result.error,
+              };
+              steps.push(childTaskStep);
+
+              // Fire-and-forget to avoid extra checkpoint
+              updatePlan({ steps: [...steps] }).catch((e) =>
+                logger.workflow.error('Plan update failed', { error: e instanceof Error ? e.message : String(e) })
+              );
+
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: toolResultJson,
+                is_error: !result.success,
+              });
             } else {
               const toolResultJson = await step.do(`tool-${toolStepId}`, async () => {
                 const startTime = Date.now();
@@ -561,21 +746,29 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                 let result: unknown;
                 let error: string | undefined;
 
-                try {
-                  result = await this.executeMcpTool(
-                    toolUse.name,
-                    toolUse.input as Record<string, unknown>,
-                    mcpConfig.credentials,
-                    mcpConfig.servers
-                  );
-                  const mcpResult = result as { isError?: boolean; content?: Array<{ type: string; text?: string }> };
-                  if (mcpResult.isError) {
-                    error = mcpResult.content?.find(c => c.type === 'text')?.text || 'Tool returned error';
-                  } else {
-                    success = true;
+                const [serverName, methodName] = toolUse.name.split('__');
+                const matchingServer = mcpConfig.servers.find((s: MCPServerInfo) => s.name.replace(/\s+/g, '_') === serverName);
+                const matchingTool = matchingServer?.tools.find((t: { name: string; requiresApproval?: boolean }) => t.name === methodName);
+
+                if (matchingTool?.requiresApproval && !approvedTools.has(toolUse.name)) {
+                  error = `This tool requires approval before use. Please call request_approval first with tool="${toolUse.name}" to get user approval, then retry this tool call after approval is granted.`;
+                } else {
+                  try {
+                    result = await this.executeMcpTool(
+                      toolUse.name,
+                      toolUse.input as Record<string, unknown>,
+                      mcpConfig.credentials,
+                      mcpConfig.servers
+                    );
+                    const mcpResult = result as { isError?: boolean; content?: Array<{ type: string; text?: string }> };
+                    if (mcpResult.isError) {
+                      error = mcpResult.content?.find(c => c.type === 'text')?.text || 'Tool returned error';
+                    } else {
+                      success = true;
+                    }
+                  } catch (e) {
+                    error = e instanceof Error ? e.message : String(e);
                   }
-                } catch (e) {
-                  error = e instanceof Error ? e.message : String(e);
                 }
 
                 const durationMs = Date.now() - startTime;
@@ -653,10 +846,20 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       const hasFailures = failedSteps.length > 0;
       const hasArtifacts = artifacts.length > 0;
 
-      // If artifacts were produced, agent succeeded even with intermediate failures
-      const isSuccess = hasArtifacts || !hasFailures;
+      // Check if agent recovered from failures (successful work after the last failure)
+      const lastFailedIndex = steps.findLastIndex((s) => s.status === 'failed');
+      const recoveredFromFailures =
+        hasFailures && steps.slice(lastFailedIndex + 1).some((s) => s.status === 'completed');
+
+      // For scheduled runs: success if created tasks, no failures, or recovered from failures
+      // For regular runs: success if has artifacts or no failures
+      const isSuccess = isScheduledRun
+        ? childTasksCreated > 0 || !hasFailures || recoveredFromFailures
+        : hasArtifacts || !hasFailures;
 
       await step.do('complete', async () => {
+        const stub = getBoardStub();
+
         if (isSuccess) {
           await updatePlan({
             status: 'completed',
@@ -665,19 +868,43 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
               success: true,
               totalTurns: turnIndex,
               artifacts: hasArtifacts ? artifacts : undefined,
+              childTasksCreated: isScheduledRun ? childTasksCreated : undefined,
               warnings:
                 hasFailures
                   ? failedSteps.map((s) => ({ name: s.name, error: s.error }))
                   : undefined,
             },
           });
+
+          // Update scheduled run record if this is a scheduled run
+          if (isScheduledRun && runId) {
+            // Include task titles in summary for historical record (even if tasks are deleted later)
+            let summary: string;
+            if (childTasksCreated > 0) {
+              const titlesStr = childTaskTitles.join('\n- ');
+              summary = `Created ${childTasksCreated} task${childTasksCreated === 1 ? '' : 's'}:\n- ${titlesStr}`;
+            } else {
+              summary = 'Completed with no new tasks';
+            }
+            await stub.updateScheduledRun(runId, {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              tasksCreated: childTasksCreated,
+              summary,
+              childTasksInfo,
+            });
+          }
+
           if (hasFailures) {
             await addLog(
               'info',
               `Agent completed successfully (${failedSteps.length} intermediate tool error(s) were handled)`
             );
           } else {
-            await addLog('info', 'Agent completed task successfully');
+            await addLog('info', isScheduledRun
+              ? `Scheduled run completed: created ${childTasksCreated} task(s)`
+              : 'Agent completed task successfully'
+            );
           }
         } else {
           await updatePlan({
@@ -690,6 +917,17 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
               failedSteps: failedSteps.map((s) => ({ name: s.name, error: s.error })),
             },
           });
+
+          // Update scheduled run record if this is a scheduled run
+          if (isScheduledRun && runId) {
+            await stub.updateScheduledRun(runId, {
+              status: 'failed',
+              completedAt: new Date().toISOString(),
+              tasksCreated: childTasksCreated,
+              error: `${failedSteps.length} tool(s) failed`,
+            });
+          }
+
           await addLog('error', `Agent failed: ${failedSteps.length} tool error(s)`);
         }
         return 'completed';
@@ -699,10 +937,21 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       logger.workflow.error('Workflow error', { error: message });
 
       await step.do('handle-error', async () => {
+        const stub = getBoardStub();
         await updatePlan({
           status: 'failed',
           result: { success: false, error: message },
         });
+
+        // Update scheduled run record if this is a scheduled run
+        if (isScheduledRun && runId) {
+          await stub.updateScheduledRun(runId, {
+            status: 'failed',
+            completedAt: new Date().toISOString(),
+            error: message,
+          });
+        }
+
         await addLog('error', `Workflow failed: ${message}`);
         return 'error';
       });
@@ -713,12 +962,18 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
 
   /**
    * Build Claude tools from MCP server definitions
+   * @param servers - MCP server definitions with their tools
+   * @param isScheduledRun - If true, filters out tools marked with disabledInScheduledRuns
    */
-  private buildClaudeTools(servers: MCPServerInfo[]): Tool[] {
+  private buildClaudeTools(servers: MCPServerInfo[], isScheduledRun = false): Tool[] {
     const tools: Tool[] = [];
 
     for (const server of servers) {
       for (const tool of server.tools) {
+        // Skip tools disabled in scheduled runs (coordination-only mode)
+        if (isScheduledRun && tool.disabledInScheduledRuns) {
+          continue;
+        }
         const inputSchema = tool.inputSchema as Tool['input_schema'];
         if (!inputSchema.type) {
           inputSchema.type = 'object';
@@ -731,29 +986,106 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       }
     }
 
-    tools.push({
-      name: 'request_approval',
-      description:
-        'Pause execution and ask user for approval before proceeding. Use this before sending emails, creating documents, or any action that cannot be undone.',
-      input_schema: {
-        type: 'object',
-        properties: {
-          tool: {
-            type: 'string',
-            description: 'The MCP tool that will be called if approved (e.g., "Google_Docs__createDocument", "Gmail__sendMessage")',
+    // For scheduled runs, only include weft_create_task (not request_approval)
+    // For regular runs, only include request_approval (not weft_create_task)
+    if (isScheduledRun) {
+      // Scheduled run: add weft_create_task instead of request_approval
+      tools.push({
+        name: 'weft_create_task',
+        description:
+          'Fork a new independent agent to handle a subtask. The child task will have its own workflow. IMPORTANT: Keep description SHORT (1-2 sentences) since users see it on the task card. Put detailed instructions in the context field.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Short, actionable title (e.g., "Daily Issue Report - Jan 19" or "Review PR #1")',
+            },
+            description: {
+              type: 'string',
+              description: 'Brief 1-2 sentence summary for the user. NO tool names. Example: "Send email summarizing open issues in repo"',
+            },
+            priority: {
+              type: 'string',
+              enum: ['low', 'medium', 'high'],
+              description: 'Task priority (default: medium)',
+            },
+            context: {
+              type: 'object',
+              description: 'CRITICAL: Data the child agent needs to do its job. Include ALL specifics so the child does NOT need to re-fetch data. The child will use these values directly in tool calls.',
+              properties: {
+                action: {
+                  type: 'string',
+                  description: 'What the child should do (e.g., "send_email", "create_pr", "review_and_merge")',
+                },
+                owner: {
+                  type: 'string',
+                  description: 'GitHub repository owner (e.g., "acme-org") - child will use this directly',
+                },
+                repo: {
+                  type: 'string',
+                  description: 'GitHub repository name (e.g., "my-project") - child will use this directly',
+                },
+                issueUrl: {
+                  type: 'string',
+                  description: 'URL of the issue or PR being worked on',
+                },
+                issues: {
+                  type: 'array',
+                  description: 'List of issues/PRs with full details (number, title, state, body, labels, etc.)',
+                },
+                summary: {
+                  type: 'string',
+                  description: 'Your analysis summary - what you found, prioritization, recommendations',
+                },
+                emailTo: {
+                  type: 'string',
+                  description: 'Email recipient address',
+                },
+                emailSubject: {
+                  type: 'string',
+                  description: 'Suggested email subject line',
+                },
+                emailGuidance: {
+                  type: 'string',
+                  description: 'Guidance for email content, tone, what to include',
+                },
+              },
+            },
+            startWorkflow: {
+              type: 'boolean',
+              description: 'Whether to start the child workflow immediately (default: true). Set to false to create the task without starting its agent.',
+            },
           },
-          action: {
-            type: 'string',
-            description: 'Short human-readable action label (e.g., "Create Document", "Send Email")',
-          },
-          data: {
-            type: 'object',
-            description: 'The exact data that will be passed to the tool (e.g., { title: "...", content: "..." } for docs)',
-          },
+          required: ['title', 'description'],
         },
-        required: ['tool', 'action', 'data'],
-      },
-    });
+      });
+    } else {
+      // Regular run: add request_approval (not weft_create_task)
+      tools.push({
+        name: 'request_approval',
+        description:
+          'Pause execution and ask user for approval before proceeding. Use this before sending emails, creating documents, or any action that cannot be undone.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            tool: {
+              type: 'string',
+              description: 'The MCP tool that will be called if approved (e.g., "Google_Docs__createDocument", "Gmail__sendMessage")',
+            },
+            action: {
+              type: 'string',
+              description: 'Short human-readable action label (e.g., "Create Document", "Send Email")',
+            },
+            data: {
+              type: 'object',
+              description: 'The exact data that will be passed to the tool (e.g., { title: "...", content: "..." } for docs)',
+            },
+          },
+          required: ['tool', 'action', 'data'],
+        },
+      });
+    }
 
     return tools;
   }
@@ -762,7 +1094,15 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
    * Build system prompt for the agent
    * Uses registry-based workflow guidance for each enabled MCP
    */
-  private buildSystemPrompt(servers: MCPServerInfo[]): string {
+  private buildSystemPrompt(
+    servers: MCPServerInfo[],
+    isScheduledRun = false,
+    timeContext?: {
+      currentTime?: string;
+      lastRunAt?: string;
+      scheduleTimezone?: string;
+    }
+  ): string {
     const toolsList = servers
       .map((s) => `- **${s.name}**: ${s.tools.map((t) => t.name).join(', ')}`)
       .join('\n');
@@ -770,45 +1110,104 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
     const serverNames = servers.map(s => s.name.replace(/\s+/g, '_'));
     const workflowGuidance = getWorkflowGuidance(serverNames);
 
+    // Build time context section for scheduled runs
+    let timeContextSection = '';
+    if (isScheduledRun && timeContext) {
+      const currentTimeStr = timeContext.currentTime
+        ? new Date(timeContext.currentTime).toLocaleString('en-US', {
+            timeZone: timeContext.scheduleTimezone || 'UTC',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short',
+          })
+        : 'Unknown';
+
+      const lastRunStr = timeContext.lastRunAt
+        ? new Date(timeContext.lastRunAt).toLocaleString('en-US', {
+            timeZone: timeContext.scheduleTimezone || 'UTC',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short',
+          })
+        : null;
+
+      timeContextSection = `
+## Time Context
+- **Current time:** ${currentTimeStr}
+- **Last successful run:** ${lastRunStr || 'This is the first run'}
+- **Timezone:** ${timeContext.scheduleTimezone || 'UTC'}
+${timeContext.lastRunAt ? `
+**IMPORTANT:** When looking for "new" items (issues, emails, etc.), filter by items created or updated AFTER: ${timeContext.lastRunAt}
+` : `
+**IMPORTANT:** This is the first run of this scheduled task. Consider whether you need to limit results (e.g., only look at recent items, not all-time).
+`}
+`;
+    }
+
+    const scheduledRunGuidance = isScheduledRun ? `
+## Creating Child Tasks
+
+Use \`weft_create_task\` to delegate work. Each child task gets its own agent with full tool access and approval workflows.
+
+**Task fields:**
+- \`title\`: Short, actionable (shown on task card)
+- \`description\`: 1-2 sentences for the user (NO tool names)
+- \`context\`: All data the child needs - owner, repo, issue numbers, your analysis
+
+**Example:**
+\`\`\`javascript
+weft_create_task({
+  title: "Review PR #42",
+  description: "Review dependency update PR",
+  context: { owner: "acme", repo: "app", prNumber: 42, action: "review_and_merge" }
+})
+\`\`\`
+
+**Important:** Include everything in context so the child doesn't re-fetch what you already found.
+` : '';
+
+    // For scheduled runs, use a completely different prompt structure
+    if (isScheduledRun) {
+      return `You are a scheduled task agent. Analyze the situation using read-only tools, then create child tasks for any work.
+
+**Rules:**
+- DO NOT execute actions directly (no PRs, emails, document edits)
+- Use \`weft_create_task\` for each piece of work - child tasks have full tool access and approval workflows
+${timeContextSection}
+## Available Tools
+${toolsList}
+- **weft_create_task**: Create a child task for work that needs to be done
+${scheduledRunGuidance}
+Summarize what you found and what child tasks you created.`;
+    }
+
+    // Regular (non-scheduled) runs get the full prompt with approval guidelines
     return `You are a helpful AI assistant that accomplishes tasks using available tools.
 
 ## Available Tools
 ${toolsList}
-- **request_approval**: Pause and ask user for approval
+- **request_approval**: Pause and ask user for approval before irreversible actions
+
+## Using Context from Parent Tasks
+If your task includes a "## Context from parent task" section, use that data directly - don't re-fetch what the parent already gathered.
 
 ## Guidelines
-1. **Think step by step** - Break down complex tasks into smaller steps
-2. **Use tools effectively** - Call tools to gather information and take actions
-3. **Request approval before irreversible actions** - Use request_approval before sending emails, creating documents, making commits, etc.
-4. **Be concise** - Keep responses focused and to the point
-5. **Handle errors gracefully** - If a tool fails, try to recover or explain what went wrong
-
-## Approval Guidelines
-Always request approval before:
-- Sending emails or messages
-- Creating or modifying documents or spreadsheets
-- Making commits or pushing code
-- Any action that modifies external systems
-
-When requesting approval, include:
-- Clear description of what you want to do
-- Preview of the content (email body, document content, etc.)
-- Any relevant context the user needs to make a decision
-
-**CRITICAL: Handling user edits in approval responses**
-When the approval result contains a \`userData\` field, the user has edited the data during approval.
-You MUST use the values from \`userData\` to override your original data when calling the actual tool.
-
-This applies to ALL approval types - emails, documents, PRs, etc. Always check for userData and use those values.
+- Request approval before sending emails, creating/modifying documents, making commits, or any irreversible action
+- When requesting approval, include a clear description and preview of the content
+- If the approval result contains \`userData\`, use those values (the user edited the data)
+- Be concise and handle errors gracefully
 
 ${workflowGuidance}
 
-## Output Guidelines
-When providing final outputs to the user:
-- Be minimal - only include the requested content
-- No extra headers, metadata, or footers
-- No "Here is..." preambles or "I've created..." explanations
-- Just the content itself`;
+Keep outputs minimal - just the content, no preambles or explanations.`;
   }
 
   /**

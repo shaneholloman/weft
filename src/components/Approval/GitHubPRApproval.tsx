@@ -17,8 +17,10 @@ import './GitHubPRApproval.css';
 interface PRApprovalData {
   owner?: string;
   repo?: string;
-  baseBranch?: string;
+  baseBranch?: string;  // GitHub tool
   headBranch?: string;
+  base?: string;        // Sandbox tool
+  branch?: string;
   title?: string;
   body?: string;
   diff?: string;
@@ -55,13 +57,18 @@ export function GitHubPRApproval({
   const {
     owner = '',
     repo = '',
-    baseBranch = 'main',
-    headBranch = '',
+    baseBranch,
+    headBranch,
+    base,
+    branch,
     title: proposedTitle = '',
     body: proposedBody = '',
     diff = '',
     stats,
   } = prData;
+
+  const targetBranch = baseBranch || base || 'main';
+  const sourceBranch = headBranch || branch || '';
 
   // Parse the diff content
   const files = useMemo(() => parseDiff(diff), [diff]);
@@ -151,11 +158,10 @@ export function GitHubPRApproval({
             <h3>{action || 'Create Pull Request'}</h3>
           </div>
           <div className="pr-approval-repo">
-            <code>{owner}/{repo}</code>
-            <span className="pr-approval-branch-arrow">←</span>
-            <code className="pr-approval-branch">{headBranch}</code>
+            {owner && repo && <><code>{owner}/{repo}</code><span className="pr-approval-branch-arrow">←</span></>}
+            <code className="pr-approval-branch">{sourceBranch}</code>
             <span className="pr-approval-branch-into">into</span>
-            <code className="pr-approval-branch">{baseBranch}</code>
+            <code className="pr-approval-branch">{targetBranch}</code>
           </div>
         </div>
         <div className="pr-approval-stats">

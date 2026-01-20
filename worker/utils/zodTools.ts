@@ -44,6 +44,12 @@ export interface ToolDefinition<
   output?: TOutput;
   /** Fields that require user approval before execution */
   approvalRequiredFields?: string[];
+  /** If true, tool is not exposed to agents (internal use only) */
+  hidden?: boolean;
+  /** If true, tool cannot be called without prior approval via request_approval */
+  requiresApproval?: boolean;
+  /** If true, tool is not available in scheduled runs (coordination-only mode) */
+  disabledInScheduledRuns?: boolean;
 }
 
 /**
@@ -74,25 +80,36 @@ function zodSchemaToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
 
 /**
  * Convert tool definitions to MCP tool schemas for getTools()
+ * Hidden tools are filtered out - they can still be called internally
  */
 export function toolsToMCPSchemas(tools: ToolDefinitions): MCPToolSchema[] {
-  return Object.entries(tools).map(([name, def]) => {
-    const schema: MCPToolSchema = {
-      name,
-      description: def.description,
-      inputSchema: zodSchemaToJsonSchema(def.input),
-    };
+  return Object.entries(tools)
+    .filter(([, def]) => !def.hidden)
+    .map(([name, def]) => {
+      const schema: MCPToolSchema = {
+        name,
+        description: def.description,
+        inputSchema: zodSchemaToJsonSchema(def.input),
+      };
 
-    if (def.output) {
-      schema.outputSchema = zodSchemaToJsonSchema(def.output);
-    }
+      if (def.output) {
+        schema.outputSchema = zodSchemaToJsonSchema(def.output);
+      }
 
-    if (def.approvalRequiredFields && def.approvalRequiredFields.length > 0) {
-      schema.approvalRequiredFields = def.approvalRequiredFields;
-    }
+      if (def.approvalRequiredFields && def.approvalRequiredFields.length > 0) {
+        schema.approvalRequiredFields = def.approvalRequiredFields;
+      }
 
-    return schema;
-  });
+      if (def.requiresApproval) {
+        schema.requiresApproval = def.requiresApproval;
+      }
+
+      if (def.disabledInScheduledRuns) {
+        schema.disabledInScheduledRuns = def.disabledInScheduledRuns;
+      }
+
+      return schema;
+    });
 }
 
 /**

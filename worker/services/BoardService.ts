@@ -14,6 +14,9 @@ interface TaskRow {
   priority: string;
   position: number;
   context: string | null;
+  schedule_config: string | null;
+  parent_task_id: string | null;
+  run_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -230,6 +233,9 @@ export class BoardService {
     description?: string;
     priority?: string;
     context?: object;
+    scheduleConfig?: object;
+    parentTaskId?: string;
+    runId?: string;
   }): Response {
     const id = this.generateId();
     const now = new Date().toISOString();
@@ -241,8 +247,8 @@ export class BoardService {
     const position = (result?.max_pos ?? -1) + 1;
 
     this.sql.exec(
-      `INSERT INTO tasks (id, column_id, board_id, title, description, priority, position, context, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, column_id, board_id, title, description, priority, position, context, schedule_config, parent_task_id, run_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       data.columnId,
       data.boardId,
@@ -251,6 +257,9 @@ export class BoardService {
       data.priority ?? 'medium',
       position,
       data.context ? JSON.stringify(data.context) : null,
+      data.scheduleConfig ? JSON.stringify(data.scheduleConfig) : null,
+      data.parentTaskId ?? null,
+      data.runId ?? null,
       now,
       now
     );
@@ -278,6 +287,7 @@ export class BoardService {
     description?: string;
     priority?: string;
     context?: object;
+    scheduleConfig?: object | null;
   }): Response {
     const now = new Date().toISOString();
 
@@ -286,18 +296,30 @@ export class BoardService {
       return jsonResponse({ error: 'Task not found' }, 404);
     }
 
+    // Handle scheduleConfig - null means remove, undefined means keep existing
+    let scheduleConfigValue: string | null;
+    if (data.scheduleConfig === null) {
+      scheduleConfigValue = null;
+    } else if (data.scheduleConfig !== undefined) {
+      scheduleConfigValue = JSON.stringify(data.scheduleConfig);
+    } else {
+      scheduleConfigValue = task.schedule_config;
+    }
+
     this.sql.exec(
       `UPDATE tasks SET
         title = ?,
         description = ?,
         priority = ?,
         context = ?,
+        schedule_config = ?,
         updated_at = ?
        WHERE id = ?`,
       data.title ?? task.title,
       data.description ?? task.description,
       data.priority ?? task.priority,
       data.context ? JSON.stringify(data.context) : task.context,
+      scheduleConfigValue,
       now,
       id
     );

@@ -150,6 +150,10 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
 
     case 'ADD_TASK':
       if (!state.activeBoard) return state;
+      // Deduplicate: don't add if task already exists (can happen when API response and WebSocket both fire)
+      if (state.activeBoard.tasks.some((t) => t.id === action.payload.id)) {
+        return state;
+      }
       return {
         ...state,
         activeBoard: {

@@ -479,10 +479,124 @@
   overflow: hidden;
 }
 
-/* Steps section in expanded panel */
-.workflow-progress-steps {
+/* Child tasks section in expanded panel (for scheduled tasks) */
+.workflow-progress-child-tasks {
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.workflow-progress-child-tasks .child-tasks-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.workflow-progress-child-tasks .child-tasks-toggle:hover {
+  opacity: 0.8;
+}
+
+.workflow-progress-child-tasks .child-tasks-toggle-icon {
+  font-size: 8px;
+  color: var(--color-text-muted);
+  width: 10px;
+}
+
+.workflow-progress-child-tasks .child-tasks-toggle-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.workflow-progress-child-tasks .child-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-left: calc(10px + var(--space-2));
+  margin-top: var(--space-2);
+}
+
+.child-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.child-task-row:hover {
+  border-color: var(--color-border-focus);
+  background: var(--color-bg-tertiary);
+}
+
+.child-task-row .child-task-title {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.child-task-row svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+/* Steps section in expanded panel - collapsible */
+.workflow-progress-steps {
+  padding: 0 var(--space-3) var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Steps toggle button */
+.workflow-progress-steps .steps-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.workflow-progress-steps .steps-toggle:hover {
+  opacity: 0.8;
+}
+
+.workflow-progress-steps .steps-toggle-icon {
+  font-size: 8px;
+  color: var(--color-text-muted);
+  width: 10px;
+}
+
+.workflow-progress-steps .steps-toggle-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.workflow-progress-steps .steps-toggle-count {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 .workflow-progress-steps .steps-header {
@@ -690,6 +804,22 @@
   color: #ef4444;
 }
 
+.workflow-progress-logs .log-show-more {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 4px;
+  font-size: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.workflow-progress-logs .log-show-more:hover {
+  color: var(--color-text-primary);
+}
+
 .workflow-progress-logs .log-details {
   width: 100%;
   padding: var(--space-1) var(--space-2);
@@ -881,6 +1011,16 @@
   box-shadow: var(--shadow-md);
   z-index: 100;
   overflow: hidden;
+}
+
+/* Fixed position menu - escapes modal overflow */
+.workflow-artifacts-menu.workflow-artifacts-menu-fixed {
+  position: fixed;
+  top: auto;
+  right: auto;
+  margin-top: 0;
+  width: 280px;
+  z-index: 10000;
 }
 
 .workflow-artifacts-menu-item {

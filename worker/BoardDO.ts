@@ -6,7 +6,10 @@ import {
   MCPService,
   MCPOAuthService,
   WorkflowService,
+  ScheduleService,
 } from './services';
+import type { ScheduleConfig, ScheduledRun, ScheduledRunStatus } from './services';
+import { logger } from './utils/logger';
 
 // ============================================
 // TYPE EXPORTS FOR RPC
@@ -38,8 +41,23 @@ export interface Task {
   priority: string;
   position: number;
   context: object | null;
+  scheduleConfig: ScheduleConfig | null;
+  parentTaskId: string | null;
+  runId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ScheduledRunRecord {
+  id: string;
+  taskId: string;
+  status: ScheduledRunStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  tasksCreated: number;
+  summary: string | null;
+  error: string | null;
+  createdAt: string;
 }
 
 export interface WorkflowPlan {
@@ -109,6 +127,7 @@ export class BoardDO extends DurableObject<Env> {
   private mcpService: MCPService;
   private mcpOAuthService: MCPOAuthService;
   private workflowService: WorkflowService;
+  private scheduleService: ScheduleService;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -151,6 +170,107 @@ export class BoardDO extends DurableObject<Env> {
       generateId,
       (boardId, type, data) => this.broadcast(boardId, type, data)
     );
+
+    this.scheduleService = new ScheduleService(
+      this.sql,
+      generateId
+    );
+  }
+
+  // ============================================
+  // ALARM HANDLER (for scheduled tasks)
+  // ============================================
+
+  async alarm(): Promise<void> {
+    const now = Date.now();
+    logger.schedule.info('Alarm fired', { timestamp: new Date(now).toISOString() });
+
+    const boardInfo = await this.getBoardInfo();
+    if (!boardInfo.id) {
+      logger.schedule.info('No board ID found, skipping alarm');
+      return;
+    }
+
+    const boardId = boardInfo.id;
+    logger.schedule.info('Processing alarm', { boardId });
+
+    const dueTasks = this.scheduleService.getTasksDueForRun(boardId, now);
+    logger.schedule.info('Tasks due for run', { boardId, count: dueTasks.length });
+
+    const currentTime = new Date(now).toISOString();
+
+    for (const { id: taskId, config, lastRunAt } of dueTasks) {
+      try {
+        const runResponse = this.scheduleService.createScheduledRun(taskId);
+        const runResult = await runResponse.json() as { success: boolean; data?: ScheduledRun };
+        if (!runResult.success || !runResult.data) continue;
+
+        const runId = runResult.data.id;
+        const task = await this.getTask(taskId);
+
+        this.scheduleService.updateScheduledRun(runId, { status: 'running' });
+
+        const anthropicApiKey = await this.getCredentialValue(boardId, 'anthropic_api_key');
+        if (!anthropicApiKey) {
+          this.scheduleService.updateScheduledRun(runId, {
+            status: 'failed',
+            completedAt: new Date().toISOString(),
+            error: 'Missing Anthropic API key',
+          });
+          continue;
+        }
+
+        const planResponse = this.workflowService.createWorkflowPlan(taskId, {
+          boardId,
+          summary: `Scheduled run: ${task.title}`,
+        });
+        const planResult = await planResponse.json() as { success: boolean; data?: WorkflowPlan };
+        if (!planResult.success || !planResult.data) continue;
+
+        const planId = planResult.data.id;
+
+        const workflow = await this.env.AGENT_WORKFLOW.create({
+          id: runId,
+          params: {
+            planId,
+            taskId,
+            boardId,
+            taskDescription: task.description || task.title,
+            anthropicApiKey,
+            isScheduledRun: true,
+            runId,
+            targetColumnId: config.targetColumnId,
+            parentTaskId: taskId,
+            currentTime,
+            lastRunAt,
+            scheduleTimezone: config.timezone,
+          },
+        });
+
+        logger.schedule.info('Started scheduled run', { runId, taskId, workflowId: workflow.id });
+
+        this.broadcast(boardId, 'scheduled_run_started', {
+          taskId,
+          runId,
+          planId,
+        });
+      } catch (error) {
+        logger.schedule.error('Failed to start scheduled run', { taskId, error: String(error) });
+      }
+    }
+
+    await this.scheduleNextAlarm(boardId);
+  }
+
+  private async scheduleNextAlarm(boardId: string): Promise<void> {
+    const nextRunTime = this.scheduleService.getNextScheduledRunTime(boardId);
+
+    if (nextRunTime) {
+      await this.ctx.storage.setAlarm(nextRunTime);
+      logger.schedule.info('Next alarm scheduled', { nextRunTime: new Date(nextRunTime).toISOString() });
+    } else {
+      await this.ctx.storage.deleteAlarm();
+    }
   }
 
   // ============================================
@@ -270,9 +390,20 @@ export class BoardDO extends DurableObject<Env> {
     description?: string;
     priority?: string;
     context?: object;
+    scheduleConfig?: object;
+    parentTaskId?: string;
+    runId?: string;
   }): Promise<Task> {
     const response = this.boardService.createTask(data);
-    return this.extractData(response);
+    const task = await this.extractData<Task>(response);
+
+    if (data.scheduleConfig) {
+      await this.scheduleNextAlarm(data.boardId);
+    }
+
+    this.broadcast(data.boardId, 'task_created', { task });
+
+    return task;
   }
 
   async getTask(taskId: string): Promise<Task> {
@@ -285,9 +416,16 @@ export class BoardDO extends DurableObject<Env> {
     description?: string;
     priority?: string;
     context?: object;
+    scheduleConfig?: object | null;
   }): Promise<Task> {
     const response = this.boardService.updateTask(taskId, data);
-    return this.extractData(response);
+    const task = await this.extractData<Task>(response);
+
+    if (data.scheduleConfig !== undefined) {
+      await this.scheduleNextAlarm(task.boardId);
+    }
+
+    return task;
   }
 
   async deleteTask(taskId: string): Promise<{ success: boolean }> {
@@ -298,6 +436,119 @@ export class BoardDO extends DurableObject<Env> {
   async moveTask(taskId: string, data: { columnId: string; position: number }): Promise<Task> {
     const response = this.boardService.moveTask(taskId, data);
     return this.extractData(response);
+  }
+
+  // ============================================
+  // SCHEDULE RPC METHODS
+  // ============================================
+
+  async getScheduledTasks(boardId: string): Promise<Task[]> {
+    const response = this.scheduleService.getScheduledTasks(boardId);
+    return this.extractData(response);
+  }
+
+  async getScheduledRuns(taskId: string, limit?: number): Promise<ScheduledRunRecord[]> {
+    const response = this.scheduleService.getScheduledRuns(taskId, limit);
+    return this.extractData(response);
+  }
+
+  async getRunTasks(runId: string): Promise<Task[]> {
+    const response = this.scheduleService.getRunTasks(runId);
+    return this.extractData(response);
+  }
+
+  async getChildTasks(parentTaskId: string): Promise<Task[]> {
+    const response = this.scheduleService.getChildTasks(parentTaskId);
+    return this.extractData(response);
+  }
+
+  async triggerScheduledRun(taskId: string): Promise<{ runId: string }> {
+    const task = await this.getTask(taskId);
+    if (!task.scheduleConfig) {
+      throw new Error('Task does not have a schedule configured');
+    }
+
+    const config = task.scheduleConfig;
+
+    const runResponse = this.scheduleService.createScheduledRun(taskId);
+    const runResult = await runResponse.json() as { success: boolean; data?: ScheduledRun };
+    if (!runResult.success || !runResult.data) {
+      throw new Error('Failed to create scheduled run');
+    }
+
+    const runId = runResult.data.id;
+
+    this.scheduleService.updateScheduledRun(runId, { status: 'running' });
+
+    const anthropicApiKey = await this.getCredentialValue(task.boardId, 'anthropic_api_key');
+    if (!anthropicApiKey) {
+      this.scheduleService.updateScheduledRun(runId, {
+        status: 'failed',
+        completedAt: new Date().toISOString(),
+        error: 'Missing Anthropic API key',
+      });
+      throw new Error('Missing Anthropic API key');
+    }
+
+    const planResponse = this.workflowService.createWorkflowPlan(taskId, {
+      boardId: task.boardId,
+      summary: `Manual run: ${task.title}`,
+    });
+    const planResult = await planResponse.json() as { success: boolean; data?: WorkflowPlan };
+    if (!planResult.success || !planResult.data) {
+      throw new Error('Failed to create workflow plan');
+    }
+
+    const planId = planResult.data.id;
+
+    const runsResponse = this.scheduleService.getScheduledRuns(taskId, 10);
+    const runsResult = await runsResponse.json() as { success: boolean; data?: Array<{ status: string; completedAt?: string }> };
+    const lastCompletedRun = runsResult.data?.find(r => r.status === 'completed' && r.completedAt);
+    const lastRunAt = lastCompletedRun?.completedAt;
+
+    const currentTime = new Date().toISOString();
+
+    await this.env.AGENT_WORKFLOW.create({
+      id: runId,
+      params: {
+        planId,
+        taskId,
+        boardId: task.boardId,
+        taskDescription: task.description || task.title,
+        anthropicApiKey,
+        isScheduledRun: true,
+        runId,
+        targetColumnId: config.targetColumnId,
+        parentTaskId: taskId,
+        currentTime,
+        lastRunAt,
+        scheduleTimezone: config.timezone,
+      },
+    });
+
+    this.broadcast(task.boardId, 'scheduled_run_started', {
+      taskId,
+      runId,
+      planId,
+    });
+
+    return { runId };
+  }
+
+  async updateScheduledRun(runId: string, data: {
+    status?: ScheduledRunStatus;
+    completedAt?: string;
+    tasksCreated?: number;
+    summary?: string;
+    error?: string;
+    childTasksInfo?: Array<{ id: string; title: string }>;
+  }): Promise<ScheduledRunRecord> {
+    const response = this.scheduleService.updateScheduledRun(runId, data);
+    return this.extractData(response);
+  }
+
+  async deleteScheduledRun(runId: string): Promise<void> {
+    this.scheduleService.deleteScheduledRun(runId);
   }
 
   // ============================================

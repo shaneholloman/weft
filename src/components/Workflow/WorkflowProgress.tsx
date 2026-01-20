@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '../common';
-import type { WorkflowPlan, WorkflowStep as WorkflowStepType, WorkflowArtifact } from '../../types';
+import type { WorkflowPlan, WorkflowStep as WorkflowStepType, WorkflowArtifact, Task } from '../../types';
 import { useBoard } from '../../context/BoardContext';
 import './Workflow.css';
 
@@ -10,6 +10,11 @@ interface WorkflowProgressProps {
   onDismiss?: () => void;
   onReviewCheckpoint?: () => void;
   onViewEmail?: (artifact: WorkflowArtifact) => void;
+  // For scheduled tasks - show child tasks created
+  childTasks?: Task[];
+  onViewTask?: (task: Task) => void;
+  // If true, this is a scheduled task's last run (hide artifacts, change Clear to Dismiss)
+  isScheduledTask?: boolean;
 }
 
 export function WorkflowProgress({
@@ -18,13 +23,19 @@ export function WorkflowProgress({
   onDismiss,
   onReviewCheckpoint,
   onViewEmail,
+  childTasks,
+  onViewTask,
+  isScheduledTask,
 }: WorkflowProgressProps) {
   const { getWorkflowLogs, fetchWorkflowLogs } = useBoard();
   const [expanded, setExpanded] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
+  const [stepsExpanded, setStepsExpanded] = useState(!isScheduledTask);
+  const [childTasksExpanded, setChildTasksExpanded] = useState(true);
   const [logsLoading, setLogsLoading] = useState(true);
   const [artifactsDropdownOpen, setArtifactsDropdownOpen] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const clearButtonRef = useRef<HTMLButtonElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const stepsEndRef = useRef<HTMLDivElement>(null);
@@ -172,8 +183,8 @@ export function WorkflowProgress({
               Review
             </Button>
           )}
-          {/* Artifact button/dropdown */}
-          {isComplete && plan.result?.artifacts && plan.result.artifacts.length > 0 && (
+          {/* Artifact button/dropdown - hidden for scheduled tasks (artifacts are on child tasks) */}
+          {!isScheduledTask && isComplete && plan.result?.artifacts && plan.result.artifacts.length > 0 && (
             <ArtifactButton
               artifacts={plan.result.artifacts}
               isOpen={artifactsDropdownOpen}
@@ -196,7 +207,7 @@ export function WorkflowProgress({
                 }
               }}
             >
-              {confirmingClear ? 'Confirm?' : 'Clear'}
+              {confirmingClear ? 'Confirm?' : isScheduledTask ? 'Dismiss' : 'Clear'}
             </Button>
           )}
         </div>
@@ -205,39 +216,83 @@ export function WorkflowProgress({
       {/* Expanded panel with steps and logs */}
       {expanded && (
         <div className="workflow-progress-panel">
-          {/* Steps section - only action steps, filtered */}
+          {/* Child tasks section - for scheduled tasks that created child tasks */}
+          {childTasks && childTasks.length > 0 && (
+            <div className="workflow-progress-child-tasks">
+              <button
+                className="child-tasks-toggle"
+                onClick={() => setChildTasksExpanded(!childTasksExpanded)}
+              >
+                <span className="child-tasks-toggle-icon">{childTasksExpanded ? '▼' : '▶'}</span>
+                <span className="child-tasks-toggle-label">
+                  Created {childTasks.length} task{childTasks.length !== 1 ? 's' : ''}
+                </span>
+              </button>
+              {childTasksExpanded && (
+                <div className="child-tasks-list">
+                  {childTasks.map((task) => (
+                    <button
+                      key={task.id}
+                      className="child-task-row"
+                      onClick={() => onViewTask?.(task)}
+                    >
+                      <span className="child-task-title">{task.title}</span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06z"/>
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Steps section - collapsible, collapsed by default for scheduled tasks */}
           {(filteredSteps.length > 0 || isRunning) && (
             <div className="workflow-progress-steps">
-              <div className="steps-header">Steps</div>
-              <div className="steps-list">
-                {filteredSteps.length === 0 && isRunning ? (
-                  <div className="step-row status-running">
-                    <span className="step-row-icon">{'\u25D4'}</span>
-                    <span className="step-row-name">Starting...</span>
-                  </div>
-                ) : (
-                  filteredSteps.map((step) => {
-                    const isToolStep = step.type === 'tool' || step.type === 'checkpoint' || step.type === 'tool_call';
-                    const stepIcon = getStepIcon(step.status);
-                    return (
-                      <div
-                        key={step.id}
-                        className={`step-row status-${step.status} ${isToolStep ? 'tool-step' : ''}`}
-                      >
-                        <span className="step-row-icon">{stepIcon}</span>
-                        <span className="step-row-name">{step.name}</span>
-                        {step.mcpServer && (
-                          <span className="step-row-server">{step.mcpServer}</span>
-                        )}
-                        <span className="step-row-duration">
-                          {getStepDuration(step) || ''}
-                        </span>
-                      </div>
-                    );
-                  })
+              <button
+                className="steps-toggle"
+                onClick={() => setStepsExpanded(!stepsExpanded)}
+              >
+                <span className="steps-toggle-icon">{stepsExpanded ? '▼' : '▶'}</span>
+                <span className="steps-toggle-label">
+                  {stepsExpanded ? 'Hide Steps' : 'Show Steps'}
+                </span>
+                {filteredSteps.length > 0 && (
+                  <span className="steps-toggle-count">({filteredSteps.length})</span>
                 )}
-                <div ref={stepsEndRef} />
-              </div>
+              </button>
+              {stepsExpanded && (
+                <div className="steps-list">
+                  {filteredSteps.length === 0 && isRunning ? (
+                    <div className="step-row status-running">
+                      <span className="step-row-icon">{'\u25D4'}</span>
+                      <span className="step-row-name">Starting...</span>
+                    </div>
+                  ) : (
+                    filteredSteps.map((step) => {
+                      const isToolStep = step.type === 'tool' || step.type === 'checkpoint' || step.type === 'tool_call';
+                      const stepIcon = getStepIcon(step.status);
+                      return (
+                        <div
+                          key={step.id}
+                          className={`step-row status-${step.status} ${isToolStep ? 'tool-step' : ''}`}
+                        >
+                          <span className="step-row-icon">{stepIcon}</span>
+                          <span className="step-row-name">{step.name}</span>
+                          {step.mcpServer && (
+                            <span className="step-row-server">{step.mcpServer}</span>
+                          )}
+                          <span className="step-row-duration">
+                            {getStepDuration(step) || ''}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={stepsEndRef} />
+                </div>
+              )}
             </div>
           )}
 
@@ -262,28 +317,49 @@ export function WorkflowProgress({
                 </div>
               ) : (
                 <div className="logs-list">
-                  {logs.map((log) => (
-                    <div key={log.id} className={`log-entry log-${log.level}`}>
-                      <span className="log-time">
-                        {new Date(log.timestamp).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        })}
-                      </span>
-                      <span className="log-msg">{log.message}</span>
-                      {log.metadata?.type === 'tool_call' && log.metadata.args && (
-                        <div className="log-details">
-                          <code>{JSON.stringify(log.metadata.args, null, 2)}</code>
-                        </div>
-                      )}
-                      {log.metadata?.type === 'tool_result' && log.metadata.durationMs && (
-                        <span className="log-duration">
-                          {(log.metadata.durationMs / 1000).toFixed(2)}s
+                  {logs.map((log) => {
+                    const isLongMessage = log.message.length > 250;
+                    const isExpanded = expandedLogs.has(log.id);
+                    const displayMessage = isLongMessage && !isExpanded
+                      ? log.message.substring(0, 250)
+                      : log.message;
+
+                    return (
+                      <div key={log.id} className={`log-entry log-${log.level}`}>
+                        <span className="log-time">
+                          {new Date(log.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}
                         </span>
-                      )}
-                    </div>
-                  ))}
+                        <span className="log-msg">
+                          {displayMessage}
+                          {isLongMessage && !isExpanded && (
+                            <button
+                              className="log-show-more"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedLogs(prev => new Set(prev).add(log.id));
+                              }}
+                            >
+                              show more
+                            </button>
+                          )}
+                        </span>
+                        {log.metadata?.type === 'tool_call' && log.metadata.args && (
+                          <div className="log-details">
+                            <code>{JSON.stringify(log.metadata.args, null, 2)}</code>
+                          </div>
+                        )}
+                        {log.metadata?.type === 'tool_result' && log.metadata.durationMs && (
+                          <span className="log-duration">
+                            {(log.metadata.durationMs / 1000).toFixed(2)}s
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                   <div ref={logsEndRef} />
                 </div>
               )
@@ -374,11 +450,26 @@ function ArtifactButton({
   onSelectEmail?: (artifact: WorkflowArtifact) => void;
 }) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Calculate menu position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      // Position below the button, aligned to right edge
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: Math.max(8, rect.right - 280), // 280px menu width, 8px min margin
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
@@ -420,15 +511,19 @@ function ArtifactButton({
   const firstIcon = ArtifactIcons[artifacts[0].type as keyof typeof ArtifactIcons] || ArtifactIcons.other;
 
   return (
-    <div className="workflow-artifacts-dropdown" ref={dropdownRef}>
-      <button className="workflow-artifact-link" onClick={onToggle}>
+    <div className="workflow-artifacts-dropdown">
+      <button ref={buttonRef} className="workflow-artifact-link" onClick={onToggle}>
         {firstIcon}
         <span className="artifact-title">{artifacts.length} artifacts</span>
         <span className="artifact-dropdown-caret">{isOpen ? '\u25B2' : '\u25BC'}</span>
       </button>
 
-      {isOpen && (
-        <div className="workflow-artifacts-menu">
+      {isOpen && menuPosition && (
+        <div
+          ref={dropdownRef}
+          className="workflow-artifacts-menu workflow-artifacts-menu-fixed"
+          style={{ top: menuPosition.top, left: menuPosition.left }}
+        >
           {artifacts.map((artifact, i) => {
             const icon = ArtifactIcons[artifact.type as keyof typeof ArtifactIcons] || ArtifactIcons.other;
             const prNumber = artifact.type === 'github_pr' && artifact.url ? getPRNumber(artifact.url) : null;

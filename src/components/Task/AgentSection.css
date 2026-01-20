@@ -12,6 +12,13 @@
   gap: var(--space-4);
 }
 
+/* Button Group */
+.agent-buttons {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
 /* Agent Button */
 .agent-run-button {
   flex-shrink: 0;
@@ -23,8 +30,8 @@
 .agent-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid var(--color-border-default);
-  border-top-color: var(--color-text-secondary);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: agent-spin 0.8s linear infinite;
 }
@@ -33,7 +40,54 @@
   to { transform: rotate(360deg); }
 }
 
-/* Tools Area - right of button */
+/* Schedule Button */
+.agent-schedule-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.agent-schedule-button:hover {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.agent-schedule-button.active {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.agent-schedule-button.open {
+  background: var(--color-bg-tertiary);
+}
+
+.agent-schedule-button svg {
+  flex-shrink: 0;
+}
+
+.agent-schedule-summary {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-schedule-check {
+  color: var(--color-accent-primary);
+}
+
+/* Tools Area - right of buttons */
 .agent-tools-area {
   display: flex;
   flex-direction: column;
@@ -101,4 +155,284 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 9999;
   pointer-events: none;
+}
+
+/* Schedule Configuration Panel */
+.agent-schedule-panel {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.agent-schedule-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.agent-schedule-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.agent-schedule-label > span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.agent-schedule-select,
+.agent-schedule-input {
+  padding: var(--space-2);
+  padding-right: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.agent-schedule-select {
+  padding-right: var(--space-6);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='%236b7280'%3E%3Cpath d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-2) center;
+}
+
+.agent-schedule-select:focus,
+.agent-schedule-input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+}
+
+/* Custom time picker */
+.agent-schedule-time-picker {
+  display: flex;
+  align-items: center;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.agent-schedule-time-picker:focus-within {
+  border-color: var(--color-border-focus);
+}
+
+.agent-schedule-time-hour,
+.agent-schedule-time-minute {
+  width: 28px;
+  text-align: center;
+  padding: var(--space-2) 2px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.agent-schedule-time-hour:focus,
+.agent-schedule-time-minute:focus {
+  outline: none;
+  background: var(--color-bg-tertiary);
+}
+
+.agent-schedule-time-period {
+  padding: var(--space-2) var(--space-5) var(--space-2) var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.agent-schedule-time-period:focus {
+  outline: none;
+  background: var(--color-bg-tertiary);
+}
+
+.agent-schedule-time-sep {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* Cron input */
+.agent-schedule-cron {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.agent-schedule-cron .agent-schedule-label {
+  flex: none;
+}
+
+.agent-schedule-cron .agent-schedule-input {
+  width: 100%;
+}
+
+.agent-schedule-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Days of week */
+.agent-schedule-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.agent-schedule-days-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.agent-schedule-days-list {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.agent-schedule-day {
+  width: 36px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.agent-schedule-day:hover {
+  border-color: var(--color-border-focus);
+  color: var(--color-text-primary);
+}
+
+.agent-schedule-day.selected {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: white;
+}
+
+/* Actions row */
+.agent-schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.agent-schedule-actions-left,
+.agent-schedule-actions-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.agent-schedule-link {
+  background: none;
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.agent-schedule-link:hover {
+  color: var(--color-accent-primary);
+}
+
+.agent-schedule-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-schedule-link.danger:hover {
+  color: #ef4444;
+}
+
+/* Mobile styles */
+@media (max-width: 767px) {
+  .agent-section-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .agent-buttons {
+    flex-direction: column;
+  }
+
+  .agent-schedule-button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .agent-schedule-row {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .agent-schedule-days-list {
+    flex-wrap: wrap;
+  }
+
+  .agent-schedule-day {
+    flex: 1;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .agent-schedule-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .agent-schedule-actions-left,
+  .agent-schedule-actions-right {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .agent-schedule-link {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .agent-schedule-time-hour,
+  .agent-schedule-time-minute {
+    width: 48px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .agent-schedule-time-period {
+    height: 40px;
+    font-size: 16px;
+    padding: 0 var(--space-3);
+  }
+
+  .agent-schedule-select {
+    min-height: 44px;
+    font-size: 16px;
+  }
 }

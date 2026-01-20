@@ -46,6 +46,13 @@ const pushOutput = z.object({
   ref: z.string().optional().describe('Git ref that was pushed'),
 });
 
+const createPullRequestOutput = z.object({
+  success: z.boolean().describe('Whether PR was created'),
+  prNumber: z.number().optional().describe('Pull request number'),
+  prUrl: z.string().optional().describe('URL to the pull request'),
+  commitHash: z.string().optional().describe('Commit hash'),
+});
+
 const readFileOutput = z.object({
   content: z.string().describe('File contents'),
 });
@@ -69,6 +76,7 @@ const destroySessionOutput = z.object({
 // Tool Definitions
 // ============================================================================
 
+// Sandbox tools are disabled in scheduled runs - those should only create child tasks
 export const sandboxTools = defineTools({
   createSession: {
     description: 'Create a new sandbox session, optionally cloning a git repository. Returns a sessionId to use in subsequent calls.',
@@ -81,6 +89,7 @@ export const sandboxTools = defineTools({
         .describe('Working directory name (default: repo)'),
     }),
     output: createSessionOutput,
+    disabledInScheduledRuns: true,
   },
 
   runClaude: {
@@ -96,6 +105,7 @@ export const sandboxTools = defineTools({
         .describe('Timeout in seconds (default: 600)'),
     }),
     output: runClaudeOutput,
+    disabledInScheduledRuns: true,
   },
 
   getDiff: {
@@ -106,6 +116,7 @@ export const sandboxTools = defineTools({
         .describe('Get only staged changes (default: false, gets all changes)'),
     }),
     output: getDiffOutput,
+    disabledInScheduledRuns: true,
   },
 
   commit: {
@@ -115,6 +126,7 @@ export const sandboxTools = defineTools({
       message: z.string().max(5000).describe('Commit message'),
     }),
     output: commitOutput,
+    disabledInScheduledRuns: true,
   },
 
   push: {
@@ -129,6 +141,30 @@ export const sandboxTools = defineTools({
         .describe('Force push (default: false)'),
     }),
     output: pushOutput,
+    hidden: true, // Internal only - agents should use createPullRequest
+    disabledInScheduledRuns: true,
+  },
+
+  createPullRequest: {
+    description: 'Create a pull request with the current sandbox changes. Handles commit, push, and PR creation in one step. IMPORTANT: Get the diff first using getDiff and request approval before calling this tool.',
+    input: z.object({
+      sessionId: commonSchemas.sessionId,
+      title: z.string().max(500).describe('Pull request title'),
+      body: z.string().max(65000).default('')
+        .describe('Pull request description (markdown supported)'),
+      branch: z.string().max(200)
+        .describe('Feature branch name to create (e.g., "feature/add-login")'),
+      base: z.string().max(200).default('main')
+        .describe('Target branch to merge into (default: main)'),
+      commitMessage: z.string().max(5000)
+        .describe('Commit message for the changes'),
+      diff: z.string().max(500000)
+        .describe('The diff from getDiff - required for approval review'),
+    }),
+    output: createPullRequestOutput,
+    approvalRequiredFields: ['title', 'body', 'diff', 'branch'],
+    requiresApproval: true,
+    disabledInScheduledRuns: true,
   },
 
   readFile: {
@@ -138,6 +174,7 @@ export const sandboxTools = defineTools({
       path: commonSchemas.sandboxPath.describe('File path relative to working directory'),
     }),
     output: readFileOutput,
+    disabledInScheduledRuns: true,
   },
 
   writeFile: {
@@ -148,6 +185,7 @@ export const sandboxTools = defineTools({
       content: z.string().max(1000000).describe('Content to write'),
     }),
     output: writeFileOutput,
+    disabledInScheduledRuns: true,
   },
 
   exec: {
@@ -161,6 +199,7 @@ export const sandboxTools = defineTools({
         .describe('Timeout in seconds (default: 60)'),
     }),
     output: execOutput,
+    disabledInScheduledRuns: true,
   },
 
   destroySession: {
@@ -169,6 +208,7 @@ export const sandboxTools = defineTools({
       sessionId: commonSchemas.sessionId,
     }),
     output: destroySessionOutput,
+    disabledInScheduledRuns: true,
   },
 });
 

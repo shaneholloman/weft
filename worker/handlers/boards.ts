@@ -155,7 +155,7 @@ export async function routeBoardRequest(
   // PUT /api/boards/:id/tasks/:taskId - Update task
   if (taskMatch && method === 'PUT') {
     const taskId = taskMatch[1];
-    const data = await request.json() as { title?: string; description?: string; priority?: string; context?: object };
+    const data = await request.json() as { title?: string; description?: string; priority?: string; context?: object; scheduleConfig?: object | null };
     try {
       const task = await boardStub.updateTask(taskId, data);
       return jsonResponse({ success: true, data: task });
@@ -229,6 +229,100 @@ export async function routeBoardRequest(
       return jsonResponse({
         success: false,
         error: { code: 'CREATE_FAILED', message: error instanceof Error ? error.message : 'Failed to create plan' },
+      }, 500);
+    }
+  }
+
+  // ============================================
+  // SCHEDULED TASK ROUTES
+  // ============================================
+
+  // GET /api/boards/:id/scheduled-tasks - Get all scheduled tasks for board
+  if (subPath === '/scheduled-tasks' && method === 'GET') {
+    try {
+      const tasks = await boardStub.getScheduledTasks(boardId);
+      return jsonResponse({ success: true, data: tasks });
+    } catch (error) {
+      return jsonResponse({
+        success: false,
+        error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to get scheduled tasks' },
+      }, 500);
+    }
+  }
+
+  // GET /api/boards/:id/tasks/:taskId/runs - Get scheduled runs for a task
+  const taskRunsMatch = subPath.match(/^\/tasks\/([^/]+)\/runs$/);
+  if (taskRunsMatch && method === 'GET') {
+    const taskId = taskRunsMatch[1];
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit') || '10', 10);
+    try {
+      const runs = await boardStub.getScheduledRuns(taskId, limit);
+      return jsonResponse({ success: true, data: runs });
+    } catch (error) {
+      return jsonResponse({
+        success: false,
+        error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to get scheduled runs' },
+      }, 500);
+    }
+  }
+
+  // POST /api/boards/:id/tasks/:taskId/run - Trigger a scheduled run manually
+  const triggerRunMatch = subPath.match(/^\/tasks\/([^/]+)\/run$/);
+  if (triggerRunMatch && method === 'POST') {
+    const taskId = triggerRunMatch[1];
+    try {
+      const result = await boardStub.triggerScheduledRun(taskId);
+      return jsonResponse({ success: true, data: result });
+    } catch (error) {
+      return jsonResponse({
+        success: false,
+        error: { code: 'TRIGGER_FAILED', message: error instanceof Error ? error.message : 'Failed to trigger scheduled run' },
+      }, 500);
+    }
+  }
+
+  // GET /api/boards/:id/runs/:runId/tasks - Get child tasks for a scheduled run
+  const runTasksMatch = subPath.match(/^\/runs\/([^/]+)\/tasks$/);
+  if (runTasksMatch && method === 'GET') {
+    const runId = runTasksMatch[1];
+    try {
+      const tasks = await boardStub.getRunTasks(runId);
+      return jsonResponse({ success: true, data: tasks });
+    } catch (error) {
+      return jsonResponse({
+        success: false,
+        error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to get run tasks' },
+      }, 500);
+    }
+  }
+
+  // DELETE /api/boards/:id/runs/:runId - Delete a scheduled run from history
+  const runDeleteMatch = subPath.match(/^\/runs\/([^/]+)$/);
+  if (runDeleteMatch && method === 'DELETE') {
+    const runId = runDeleteMatch[1];
+    try {
+      await boardStub.deleteScheduledRun(runId);
+      return jsonResponse({ success: true });
+    } catch (error) {
+      return jsonResponse({
+        success: false,
+        error: { code: 'DELETE_FAILED', message: error instanceof Error ? error.message : 'Failed to delete run' },
+      }, 500);
+    }
+  }
+
+  // GET /api/boards/:id/tasks/:taskId/children - Get child tasks for a parent scheduled task
+  const childTasksMatch = subPath.match(/^\/tasks\/([^/]+)\/children$/);
+  if (childTasksMatch && method === 'GET') {
+    const parentTaskId = childTasksMatch[1];
+    try {
+      const tasks = await boardStub.getChildTasks(parentTaskId);
+      return jsonResponse({ success: true, data: tasks });
+    } catch (error) {
+      return jsonResponse({
+        success: false,
+        error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to get child tasks' },
       }, 500);
     }
   }

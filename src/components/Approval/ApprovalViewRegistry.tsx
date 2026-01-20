@@ -31,6 +31,7 @@ type ApprovalViewComponent = React.FC<ApprovalViewProps>;
  */
 const APPROVAL_VIEW_REGISTRY: Record<string, ApprovalViewComponent> = {
   'GitHub__create_pr': GitHubPRApproval,
+  'Sandbox__createPullRequest': GitHubPRApproval,
   'Gmail__sendEmail': EmailApproval,
   'Gmail__createDraft': EmailApproval,
   'Google_Docs__createDocument': GoogleDocsApproval,

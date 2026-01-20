@@ -96,6 +96,9 @@ export class SandboxMCPServer extends HostedMCPServer {
         case 'push':
           return this.push(parseToolArgs(sandboxTools.push.input, args));
 
+        case 'createPullRequest':
+          return this.createPullRequest(parseToolArgs(sandboxTools.createPullRequest.input, args));
+
         case 'readFile':
           return this.readFile(parseToolArgs(sandboxTools.readFile.input, args));
 
@@ -485,6 +488,149 @@ echo "---CLAUDE_EXIT_CODE:$?---" >> /tmp/claude-output.txt
       structuredContent: {
         success: true,
         ref: `${remote}/${branch}`,
+      },
+    };
+  }
+
+  private async createPullRequest(args: {
+    sessionId: string;
+    title: string;
+    body: string;
+    branch: string;
+    base: string;
+    commitMessage: string;
+    diff: string; // Required for approval but not used in implementation
+  }): Promise<MCPToolCallResult> {
+    const session = sessionCache.get(args.sessionId);
+    if (!session) {
+      return this.errorContent(`Session not found: ${args.sessionId}`);
+    }
+
+    if (!session.repoUrl) {
+      return this.errorContent('Session was not created with a repository URL');
+    }
+
+    if (!this.credentials.githubToken) {
+      return this.errorContent('GitHub token not configured');
+    }
+
+    // Extract owner/repo from repoUrl
+    // Supports: https://github.com/owner/repo.git or https://github.com/owner/repo
+    const repoMatch = session.repoUrl.match(/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/);
+    if (!repoMatch) {
+      return this.errorContent(`Could not parse repository URL: ${session.repoUrl}`);
+    }
+    const [, owner, repo] = repoMatch;
+
+    const sandbox = getSandbox(this.sandboxBinding, session.sandboxId);
+
+    // 1. Create and checkout feature branch
+    const branchStream = await sandbox.execStream(
+      `cd ${session.workDir} && git checkout -b ${args.branch}`
+    );
+    let branchExitCode = 0;
+    for await (const event of parseSSEStream<ExecEvent>(branchStream)) {
+      if (event.type === 'complete') {
+        branchExitCode = event.exitCode || 0;
+        break;
+      }
+    }
+    if (branchExitCode !== 0) {
+      return this.errorContent(`Failed to create branch ${args.branch}`);
+    }
+
+    // 2. Stage and commit changes
+    const addStream = await sandbox.execStream(`cd ${session.workDir} && git add -A -- . ${GIT_ADD_EXCLUSIONS}`);
+    for await (const event of parseSSEStream<ExecEvent>(addStream)) {
+      if (event.type === 'complete') break;
+    }
+
+    await sandbox.writeFile('/tmp/commit-msg.txt', args.commitMessage);
+    const commitStream = await sandbox.execStream(
+      `cd ${session.workDir} && git commit -F /tmp/commit-msg.txt`
+    );
+    let commitHash = '';
+    let commitExitCode = 0;
+    for await (const event of parseSSEStream<ExecEvent>(commitStream)) {
+      if (event.type === 'complete') {
+        commitExitCode = event.exitCode || 0;
+        break;
+      }
+    }
+    if (commitExitCode !== 0) {
+      return this.errorContent('Failed to commit changes');
+    }
+
+    // Get commit hash
+    const hashStream = await sandbox.execStream(`cd ${session.workDir} && git rev-parse HEAD`);
+    for await (const event of parseSSEStream<ExecEvent>(hashStream)) {
+      if (event.type === 'stdout') {
+        commitHash = event.data?.trim() || '';
+      }
+      if (event.type === 'complete') break;
+    }
+
+    // 3. Push to remote
+    const pushStream = await sandbox.execStream(
+      `cd ${session.workDir} && git push origin HEAD:${args.branch}`
+    );
+    let pushOutput = '';
+    let pushExitCode = 0;
+    for await (const event of parseSSEStream<ExecEvent>(pushStream)) {
+      if (event.type === 'stdout' || event.type === 'stderr') {
+        pushOutput += event.data || '';
+      }
+      if (event.type === 'complete') {
+        pushExitCode = event.exitCode || 0;
+        break;
+      }
+    }
+    if (pushExitCode !== 0) {
+      return this.errorContent(`Failed to push: ${pushOutput}`);
+    }
+
+    // 4. Create PR via GitHub API
+    const prResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.credentials.githubToken}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'Weft-Sandbox',
+      },
+      body: JSON.stringify({
+        title: args.title,
+        body: args.body,
+        head: args.branch,
+        base: args.base,
+      }),
+    });
+
+    if (!prResponse.ok) {
+      const errorText = await prResponse.text();
+      return this.errorContent(`Failed to create PR: ${prResponse.status} ${errorText}`);
+    }
+
+    const prData = await prResponse.json() as { number: number; html_url: string };
+
+    logger.sandbox.info('Created pull request', {
+      owner,
+      repo,
+      prNumber: prData.number,
+      branch: args.branch,
+    });
+
+    return {
+      content: [{ type: 'text', text: `Created PR #${prData.number}: ${prData.html_url}` }],
+      structuredContent: {
+        success: true,
+        prNumber: prData.number,
+        prUrl: prData.html_url,
+        commitHash,
+        // Artifact fields for workflow result
+        url: prData.html_url,
+        title: `PR #${prData.number}: ${args.title}`,
       },
     };
   }

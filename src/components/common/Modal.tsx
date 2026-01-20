@@ -6,13 +6,14 @@ export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  titleBadge?: ReactNode;
   children: ReactNode;
   width?: 'sm' | 'md' | 'lg' | 'full';
   showBackButton?: boolean;
   onBack?: () => void;
 }
 
-export function Modal({ isOpen, onClose, title, children, width = 'md', showBackButton, onBack }: ModalProps) {
+export function Modal({ isOpen, onClose, title, titleBadge, children, width = 'md', showBackButton, onBack }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export function Modal({ isOpen, onClose, title, children, width = 'md', showBack
                 </button>
               )}
               <h2 className="modal-title">{title}</h2>
+              {titleBadge}
             </div>
             <button className="modal-close" onClick={onClose} aria-label="Close">
               &times;

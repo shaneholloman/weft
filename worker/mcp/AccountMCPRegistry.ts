@@ -249,8 +249,8 @@ IMPORTANT for approval to show diff correctly:
 
 After approval, call the actual tool with the approved data.`;
 
-const SANDBOX_GUIDANCE = `## Code Change Workflow (Sandbox + GitHub)
-For ANY task requiring code changes, you MUST use Sandbox. Here's the exact flow:
+const SANDBOX_GUIDANCE = `## Code Change Workflow (Sandbox)
+For ANY task requiring code changes, you MUST use Sandbox. Here's the flow:
 
 1. **Clone the repository**:
    \`\`\`
@@ -258,56 +258,49 @@ For ANY task requiring code changes, you MUST use Sandbox. Here's the exact flow
    \`\`\`
    This returns a sessionId you'll use for all subsequent calls.
 
-2. **Create a feature branch** (REQUIRED - never commit directly to main):
-   \`\`\`
-   Sandbox__exec({ sessionId: "...", command: "git checkout -b feature/descriptive-branch-name" })
-   \`\`\`
-   Use a descriptive branch name like "feature/improve-readme" or "fix/typo-in-docs".
-
-3. **Make changes** - Use runClaude to let Claude Code make the edits:
+2. **Make changes** - Use runClaude to let Claude Code make the edits:
    \`\`\`
    Sandbox__runClaude({ sessionId: "...", task: "description of what to change" })
    \`\`\`
 
-4. **Get the diff** - REQUIRED before approval:
+3. **Get the diff** - REQUIRED before approval:
    \`\`\`
    Sandbox__getDiff({ sessionId: "..." })
    \`\`\`
-   This returns a JSON object with \`structuredContent.diff\` (the unified diff string) and \`structuredContent.stats\` (files, additions, deletions counts).
+   This returns \`structuredContent.diff\` (unified diff) and \`structuredContent.stats\`.
 
-5. **Request PR approval** - Include the diff from step 4:
+4. **Request PR approval** - Include the diff from step 3:
    \`\`\`
    request_approval({
-     tool: "GitHub__create_pr",
+     tool: "Sandbox__createPullRequest",
      action: "Create Pull Request",
      data: {
-       owner, repo, baseBranch: "main", headBranch: "feature/your-branch-name",
-       title, body,
-       diff: structuredContent.diff,  // REQUIRED: extract from getDiff result
-       stats: structuredContent.stats  // REQUIRED: extract from getDiff result
+       title: "PR title",
+       body: "PR description",
+       branch: "feature/descriptive-branch-name",
+       diff: structuredContent.diff  // REQUIRED: extract from getDiff result
      }
    })
    \`\`\`
-   IMPORTANT: You MUST extract the diff and stats from the getDiff result's structuredContent field.
 
-6. **After user approval** - Commit, push, AND create PR (ALL THREE REQUIRED):
+5. **After user approval** - Create the PR (handles commit + push + PR creation):
    \`\`\`
-   Sandbox__commit({ sessionId, message: "..." })
-   Sandbox__push({ sessionId, branch: "feature/your-branch-name" })
-   GitHub__create_pr({ owner, repo, title, head: "feature/your-branch-name", base: "main", body })
+   Sandbox__createPullRequest({
+     sessionId,
+     title: "PR title",
+     body: "PR description",
+     branch: "feature/descriptive-branch-name",
+     base: "main",
+     commitMessage: "commit message",
+     diff: structuredContent.diff
+   })
    \`\`\`
-   **CRITICAL: You MUST call GitHub__create_pr after pushing. The task is NOT complete until the PR is created.**
 
 IMPORTANT RULES:
-- createSession requires repoUrl parameter to clone the repo
-- ALWAYS create a feature branch before making changes (step 2)
-- Do NOT call request_approval without first calling getDiff
-- When calling request_approval, parse the getDiff JSON result and extract:
-  - \`structuredContent.diff\` → put in the \`diff\` field
-  - \`structuredContent.stats\` → put in the \`stats\` field
-- The "diff" and "stats" fields in approval data are REQUIRED
-- Use the SAME branch name in: checkout, push, and create_pr
-- After approval, you MUST: commit → push → create_pr (in that order, all three)`;
+- createSession requires repoUrl parameter
+- ALWAYS call getDiff before requesting approval
+- Include the diff in both the approval request AND the createPullRequest call
+- createPullRequest handles everything: creates branch, commits, pushes, creates PR`;
 
 const GITHUB_GUIDANCE = `## GitHub Workflow
 Use GitHub tools to read repository information, issues, and pull requests.
@@ -396,6 +389,7 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
           }
         ),
         workflowGuidance: SANDBOX_GUIDANCE,
+        artifactType: 'github_pr',
       },
     ],
   },
