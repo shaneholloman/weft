@@ -38,6 +38,9 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfigType | undefined>(task.scheduleConfig);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+
+  const hasUnsavedChanges = title !== task.title || description !== (task.description || '');
 
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [workflowPlan, setWorkflowPlan] = useState<WorkflowPlan | null>(null);
@@ -64,6 +67,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
       setDescription(task.description || '');
       setScheduleConfig(task.scheduleConfig);
       setConfirmingDelete(false);
+      setShowUnsavedWarning(false);
       setWorkflowError(null);
       setSelectedEmailArtifact(null);
       setIsRunHistoryOpen(false);
@@ -143,6 +147,21 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     });
     setIsSaving(false);
     onClose();
+  };
+
+  const handleDiscard = () => {
+    setShowUnsavedWarning(false);
+    onClose();
+  };
+
+  const preventClose = useCallback(() => {
+    // Only prevent close on desktop (mobile takes full screen, actions are explicit)
+    if (window.innerWidth <= 767) return false;
+    return hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
+
+  const handleCloseBlocked = () => {
+    setShowUnsavedWarning(true);
   };
 
   const handleDelete = async () => {
@@ -461,7 +480,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
           })()}
         </div>
 
-        <div className="task-modal-footer">
+        <div className={`task-modal-footer${showUnsavedWarning ? ' has-warning' : ''}`}>
           <div className={`delete-action ${confirmingDelete ? 'confirming' : ''}`}>
             {confirmingDelete ? (
               <>
@@ -478,9 +497,12 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
               </Button>
             )}
           </div>
+          {showUnsavedWarning && (
+            <span className="task-modal-unsaved-hint">Unsaved changes</span>
+          )}
           <div className="task-modal-footer-right">
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
+            <Button variant="ghost" onClick={handleDiscard}>
+              {hasUnsavedChanges ? 'Discard' : 'Cancel'}
             </Button>
             <Button
               variant="primary"
@@ -537,6 +559,8 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
         width={modalWidth}
         showBackButton={showBackButton}
         onBack={handleBack}
+        preventClose={preventClose}
+        onCloseBlocked={handleCloseBlocked}
       >
         <div className={`task-modal ${currentView !== 'main' ? `view-${currentView}` : ''}`}>
           {renderContent()}

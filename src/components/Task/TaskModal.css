@@ -24,6 +24,17 @@
   gap: var(--space-2);
 }
 
+/* Unsaved changes hint */
+.task-modal-unsaved-hint {
+  font-size: 12px;
+  color: var(--color-warning-fg, #b45309);
+  animation: fadeSlideIn 0.15s ease-out;
+}
+
+.task-modal-footer.has-warning {
+  border-top-color: var(--color-warning-emphasis, #f59e0b);
+}
+
 /* Delete action */
 .delete-action {
   display: flex;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import './Modal.css';
 
@@ -11,15 +11,40 @@ export interface ModalProps {
   width?: 'sm' | 'md' | 'lg' | 'full';
   showBackButton?: boolean;
   onBack?: () => void;
+  /** Return true to prevent close and trigger wiggle animation */
+  preventClose?: () => boolean;
+  /** Called when close was prevented */
+  onCloseBlocked?: () => void;
 }
 
-export function Modal({ isOpen, onClose, title, titleBadge, children, width = 'md', showBackButton, onBack }: ModalProps) {
+export function Modal({ isOpen, onClose, title, titleBadge, children, width = 'md', showBackButton, onBack, preventClose, onCloseBlocked }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [isWiggling, setIsWiggling] = useState(false);
+
+  // Reset wiggle state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsWiggling(false);
+    }
+  }, [isOpen]);
+
+  const attemptClose = useCallback(() => {
+    if (preventClose?.()) {
+      // Restart animation by removing and re-adding class
+      setIsWiggling(false);
+      requestAnimationFrame(() => {
+        setIsWiggling(true);
+      });
+      onCloseBlocked?.();
+      return;
+    }
+    onClose();
+  }, [preventClose, onCloseBlocked, onClose]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        attemptClose();
       }
     };
 
@@ -32,11 +57,11 @@ export function Modal({ isOpen, onClose, title, titleBadge, children, width = 'm
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, attemptClose]);
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) {
-      onClose();
+      attemptClose();
     }
   };
 
@@ -44,7 +69,7 @@ export function Modal({ isOpen, onClose, title, titleBadge, children, width = 'm
 
   return createPortal(
     <div className="modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
-      <div className={`modal modal-${width}`} role="dialog" aria-modal="true">
+      <div className={`modal modal-${width}${isWiggling ? ' modal-wiggle' : ''}`} role="dialog" aria-modal="true">
         {title && (
           <div className="modal-header">
             <div className="modal-header-left">
@@ -58,7 +83,7 @@ export function Modal({ isOpen, onClose, title, titleBadge, children, width = 'm
               <h2 className="modal-title">{title}</h2>
               {titleBadge}
             </div>
-            <button className="modal-close" onClick={onClose} aria-label="Close">
+            <button className="modal-close" onClick={attemptClose} aria-label="Close">
               &times;
             </button>
           </div>
