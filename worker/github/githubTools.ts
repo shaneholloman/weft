@@ -72,8 +72,18 @@ const pullRequestReviewOutput = z.object({
   id: z.number().describe('Review ID'),
   state: z.string().describe('Review state'),
   body: z.string().describe('Review body'),
+  author: z.string().describe('Review author login'),
   url: z.string().describe('URL to the review'),
+  submitted_at: z.string().optional().describe('When the review was submitted'),
   commit_id: z.string().optional().describe('Commit SHA the review is attached to'),
+});
+
+const commentOutput = z.object({
+  id: z.number().describe('Comment ID'),
+  body: z.string().describe('Comment body'),
+  author: z.string().describe('Comment author login'),
+  created_at: z.string().describe('When the comment was created'),
+  url: z.string().describe('URL to the comment'),
 });
 
 const repoOutput = z.object({
@@ -247,6 +257,35 @@ export const githubTools = defineTools({
     approvalRequiredFields: ['owner', 'repo', 'pullNumber', 'event', 'diff'],
     requiresApproval: true,
     disabledInScheduledRuns: true,
+  },
+
+  listIssueComments: {
+    description: 'List comments on an issue',
+    input: z.object({
+      owner: commonSchemas.owner,
+      repo: commonSchemas.repo,
+      issueNumber: z.coerce.number().int().positive()
+        .describe('Issue number'),
+      perPage: z.coerce.number().int().min(1).max(100).default(30)
+        .describe('Number of results per page (default: 30, max: 100)'),
+    }),
+    output: z.array(commentOutput),
+  },
+
+  listPullRequestComments: {
+    description: 'List review summaries and discussion comments on a pull request',
+    input: z.object({
+      owner: commonSchemas.owner,
+      repo: commonSchemas.repo,
+      pullNumber: z.coerce.number().int().positive()
+        .describe('Pull request number'),
+      perPage: z.coerce.number().int().min(1).max(100).default(30)
+        .describe('Number of results per page (default: 30, max: 100)'),
+    }),
+    output: z.object({
+      reviews: z.array(pullRequestReviewOutput),
+      comments: z.array(commentOutput),
+    }),
   },
 
   getRepository: {

@@ -85,6 +85,10 @@ export class GitHubMCPServer extends HostedMCPServer {
           return await this.listPullRequestFiles(normalizedArgs);
         case 'submitPullRequestReview':
           return await this.submitPullRequestReview(normalizedArgs);
+        case 'listIssueComments':
+          return await this.listIssueComments(normalizedArgs);
+        case 'listPullRequestComments':
+          return await this.listPullRequestComments(normalizedArgs);
         case 'getRepository':
           return await this.getRepository(normalizedArgs);
         case 'listRepositories':
@@ -463,6 +467,81 @@ export class GitHubMCPServer extends HostedMCPServer {
       commit_id: data.commit_id,
     };
 
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      structuredContent: result,
+    };
+  }
+
+  private async listIssueComments(args: Record<string, unknown>): Promise<MCPToolCallResult> {
+    const { owner, repo, issueNumber, perPage } = parseToolArgs(githubTools.listIssueComments.input, args);
+    const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${perPage}`;
+    const data = await this.githubFetch(url).then(r => r.json()) as Array<{
+      id: number;
+      body: string;
+      html_url: string;
+      created_at: string;
+      user?: { login?: string };
+    }>;
+
+    const result = data.map((c) => ({
+      id: c.id,
+      body: c.body || '',
+      author: c.user?.login || '',
+      created_at: c.created_at,
+      url: c.html_url,
+    }));
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      structuredContent: result,
+    };
+  }
+
+  private async listPullRequestComments(args: Record<string, unknown>): Promise<MCPToolCallResult> {
+    const { owner, repo, pullNumber, perPage } = parseToolArgs(githubTools.listPullRequestComments.input, args);
+
+    // Fetch reviews and issue-level comments in parallel
+    const [reviewsData, commentsData] = await Promise.all([
+      this.githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${pullNumber}/reviews?per_page=${perPage}`)
+        .then(r => r.json()) as Promise<Array<{
+          id: number;
+          state: string;
+          body: string;
+          html_url: string;
+          submitted_at?: string;
+          commit_id?: string;
+          user?: { login?: string };
+        }>>,
+      this.githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=${perPage}`)
+        .then(r => r.json()) as Promise<Array<{
+          id: number;
+          body: string;
+          html_url: string;
+          created_at: string;
+          user?: { login?: string };
+        }>>,
+    ]);
+
+    const reviews = reviewsData.map((r) => ({
+      id: r.id,
+      state: r.state,
+      body: r.body || '',
+      author: r.user?.login || '',
+      url: r.html_url,
+      submitted_at: r.submitted_at,
+      commit_id: r.commit_id,
+    }));
+
+    const comments = commentsData.map((c) => ({
+      id: c.id,
+      body: c.body || '',
+      author: c.user?.login || '',
+      created_at: c.created_at,
+      url: c.html_url,
+    }));
+
+    const result = { reviews, comments };
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       structuredContent: result,
