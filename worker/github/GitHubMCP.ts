@@ -367,7 +367,7 @@ export class GitHubMCPServer extends HostedMCPServer {
       previous_filename?: string;
     }>;
 
-    const result = data.map((file) => ({
+    const files = data.map((file) => ({
       filename: file.filename,
       status: file.status,
       additions: file.additions,
@@ -376,6 +376,26 @@ export class GitHubMCPServer extends HostedMCPServer {
       patch: file.patch,
       previous_filename: file.previous_filename,
     }));
+
+    // Assemble a unified diff from individual file patches.
+    const diff = data
+      .filter((f) => f.patch)
+      .map((f) => {
+        const a = f.previous_filename || f.filename;
+        const b = f.filename;
+        return `diff --git a/${a} b/${b}\n--- a/${a}\n+++ b/${b}\n${f.patch}`;
+      })
+      .join('\n');
+
+    const result = {
+      files,
+      diff,
+      stats: {
+        files: files.length,
+        additions: files.reduce((s, f) => s + f.additions, 0),
+        deletions: files.reduce((s, f) => s + f.deletions, 0),
+      },
+    };
 
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],

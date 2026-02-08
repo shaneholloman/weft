@@ -319,7 +319,8 @@ GitHub__getPullRequest({ owner: "...", repo: "...", pullNumber: 123 })
 GitHub__getPullRequest({ owner: "...", repo: "...", pullNumber: 123 })
 GitHub__listPullRequestFiles({ owner: "...", repo: "...", pullNumber: 123 })
 \`\`\`
-2. Build a unified diff string from file patches and request approval:
+listPullRequestFiles returns \`structuredContent.diff\` (unified diff) and \`structuredContent.stats\`.
+2. Request approval using the diff and stats from step 1:
 \`\`\`
 request_approval({
   tool: "GitHub__submitPullRequestReview",
@@ -335,7 +336,8 @@ request_approval({
     event: "REQUEST_CHANGES",
     body: "Overall review summary",
     comments: [{ path: "src/app.ts", line: 42, side: "RIGHT", body: "..." }],
-    diff: "diff --git ..."
+    diff: structuredContent.diff,
+    stats: structuredContent.stats
   }
 })
 \`\`\`
