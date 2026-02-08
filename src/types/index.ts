@@ -155,6 +155,8 @@ export interface DiffComment {
   endLine?: number;  // For multi-line selections
   lineType: 'addition' | 'deletion' | 'context';
   content: string;
+  kind?: 'comment' | 'suggestion';
+  suggestion?: string;
 }
 
 // ============================================

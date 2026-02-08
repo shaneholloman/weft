@@ -813,7 +813,19 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
               if (toolResultData.success && toolResultData.result) {
                 const artifact = this.extractArtifact(toolUse.name, toolResultData.result);
                 if (artifact) {
-                  artifacts.push(artifact);
+                  // Dedupe overlapping URLs, keep the more specific one.
+                  if (artifact.url) {
+                    const existingIdx = artifacts.findIndex(
+                      (a) => a.url && a.type === artifact.type && (a.url.startsWith(artifact.url!) || artifact.url!.startsWith(a.url))
+                    );
+                    if (existingIdx !== -1) {
+                      artifacts[existingIdx] = artifact.url.length >= artifacts[existingIdx].url!.length ? artifact : artifacts[existingIdx];
+                    } else {
+                      artifacts.push(artifact);
+                    }
+                  } else {
+                    artifacts.push(artifact);
+                  }
                 }
               }
 

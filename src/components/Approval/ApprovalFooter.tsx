@@ -19,6 +19,9 @@ interface ApprovalFooterProps {
   approveLabel?: string;
   approveDisabled?: boolean;
   commentCount?: number;
+  requestChangesLabel?: string;
+  requestChangesDisabled?: boolean;
+  requestChangesDisabledTitle?: string;
 }
 
 export function ApprovalFooter({
@@ -29,11 +32,16 @@ export function ApprovalFooter({
   approveLabel = 'Approve',
   approveDisabled = false,
   commentCount = 0,
+  requestChangesLabel,
+  requestChangesDisabled,
+  requestChangesDisabledTitle,
 }: ApprovalFooterProps) {
   const hasComments = commentCount > 0;
-  const requestChangesLabel = hasComments
+  const computedRequestChangesLabel = requestChangesLabel || (hasComments
     ? `Request Changes (${commentCount})`
-    : 'Request Changes';
+    : 'Request Changes');
+  const isRequestChangesDisabled = requestChangesDisabled ?? !hasComments;
+  const requestChangesTitle = requestChangesDisabledTitle ?? (!hasComments ? 'Add comments to request changes' : undefined);
 
   return (
     <div className="approval-footer">
@@ -50,10 +58,10 @@ export function ApprovalFooter({
           <Button
             variant="default"
             onClick={onRequestChanges}
-            disabled={isLoading || !hasComments}
-            title={!hasComments ? 'Add comments to request changes' : undefined}
+            disabled={isLoading || isRequestChangesDisabled}
+            title={requestChangesTitle}
           >
-            {isLoading ? 'Sending...' : requestChangesLabel}
+            {isLoading ? 'Sending...' : computedRequestChangesLabel}
           </Button>
           <Button
             variant="primary"

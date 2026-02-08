@@ -311,7 +311,39 @@ For creating PRs with code changes, use Sandbox to make the changes first.
 GitHub__getRepository({ owner: "...", repo: "..." })
 GitHub__listIssues({ owner: "...", repo: "...", state: "open" })
 GitHub__getPullRequest({ owner: "...", repo: "...", pullNumber: 123 })
-\`\`\``;
+\`\`\`
+
+**Reviewing pull requests:**
+1. Fetch PR metadata and changed files:
+\`\`\`
+GitHub__getPullRequest({ owner: "...", repo: "...", pullNumber: 123 })
+GitHub__listPullRequestFiles({ owner: "...", repo: "...", pullNumber: 123 })
+\`\`\`
+2. Build a unified diff string from file patches and request approval:
+\`\`\`
+request_approval({
+  tool: "GitHub__submitPullRequestReview",
+  action: "Review Pull Request",
+  data: {
+    owner: "...",
+    repo: "...",
+    pullNumber: 123,
+    prTitle: "...",
+    authorLogin: "...",
+    baseBranch: "...",
+    headBranch: "...",
+    event: "REQUEST_CHANGES",
+    body: "Overall review summary",
+    comments: [{ path: "src/app.ts", line: 42, side: "RIGHT", body: "..." }],
+    diff: "diff --git ..."
+  }
+})
+\`\`\`
+3. After user approval, call:
+\`\`\`
+GitHub__submitPullRequestReview({ owner: "...", repo: "...", pullNumber: 123, event: "COMMENT", body: "...", comments: [...] })
+\`\`\`
+Always use \`userData\` from the approval result when present.`;
 
 // ============================================================================
 // Registry

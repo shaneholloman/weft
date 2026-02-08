@@ -8,6 +8,7 @@
 import { DefaultApproval } from './DefaultApproval';
 import { EmailApproval } from './EmailApproval';
 import { GitHubPRApproval } from './GitHubPRApproval';
+import { GitHubPRReviewApproval } from './GitHubPRReviewApproval';
 import { GoogleDocsApproval } from './GoogleDocsApproval';
 import { GoogleSheetsApproval } from './GoogleSheetsApproval';
 
@@ -33,6 +34,8 @@ const APPROVAL_VIEW_REGISTRY: Record<string, ApprovalViewComponent> = {
   'GitHub__createPullRequest': GitHubPRApproval,
   'GitHub__create_pr': GitHubPRApproval,
   'Sandbox__createPullRequest': GitHubPRApproval,
+  'GitHub__submitPullRequestReview': GitHubPRReviewApproval,
+  'GitHub__submit_pr_review': GitHubPRReviewApproval,
   'Gmail__sendEmail': EmailApproval,
   'Gmail__createDraft': EmailApproval,
   'Google_Docs__createDocument': GoogleDocsApproval,

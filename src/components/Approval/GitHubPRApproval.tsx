@@ -79,6 +79,8 @@ export function GitHubPRApproval({
   const [selectedFile, setSelectedFile] = useState<string | undefined>(
     files.length > 0 ? files[0].path : undefined
   );
+  const [showAgentFeedback, setShowAgentFeedback] = useState(false);
+  const [revisionNote, setRevisionNote] = useState('');
 
   // Calculate stats from parsed diff if not provided
   const totalFiles = stats?.files ?? files.length;
@@ -143,10 +145,40 @@ export function GitHubPRApproval({
     });
   };
 
-  const handleRequestChanges = () => {
-    const feedback = formatCommentsFeedback();
-    onRequestChanges(feedback);
+  const hasRevisionNote = revisionNote.trim().length > 0;
+  const hasComments = comments.length > 0;
+
+  const handleReviseOrExpand = () => {
+    // If expanded or has comments: send immediately
+    if (showAgentFeedback || hasComments) {
+      handleRequestChanges();
+      return;
+    }
+    // Otherwise expand the feedback textarea
+    setShowAgentFeedback(true);
   };
+
+  const handleRequestChanges = () => {
+    const parts: string[] = [];
+    if (revisionNote.trim()) {
+      parts.push(revisionNote.trim());
+    }
+    const commentsFeedback = formatCommentsFeedback();
+    if (commentsFeedback) {
+      parts.push(commentsFeedback);
+    }
+    onRequestChanges(parts.join('\n\n'));
+  };
+
+  const reviseLabel = showAgentFeedback
+    ? 'Send to Agent'
+    : hasComments
+      ? `Send to Agent (${comments.length})`
+      : 'Revise with Agent';
+
+  const reviseDisabled = showAgentFeedback
+    ? !hasRevisionNote && !hasComments
+    : false;
 
   return (
     <div className="pr-approval-view">
@@ -230,14 +262,53 @@ export function GitHubPRApproval({
               />
             </div>
           </div>
+
+          {showAgentFeedback && (
+            <div className="pr-approval-agent-feedback">
+              <div className="pr-approval-agent-feedback-bar">
+                <span className="pr-approval-agent-feedback-label">
+                  Agent feedback
+                  {hasComments && <span className="pr-approval-agent-feedback-count"> · {comments.length} inline comment{comments.length !== 1 ? 's' : ''} included</span>}
+                </span>
+                <button
+                  className="pr-approval-agent-feedback-dismiss"
+                  onClick={() => { setShowAgentFeedback(false); setRevisionNote(''); }}
+                >
+                  Cancel
+                </button>
+              </div>
+              <textarea
+                className="pr-approval-agent-textarea"
+                value={revisionNote}
+                onChange={(e) => setRevisionNote(e.target.value)}
+                placeholder="Tell the agent what to change..."
+                rows={2}
+                autoFocus
+                disabled={isLoading}
+              />
+            </div>
+          )}
+
+          {!showAgentFeedback && hasComments && (
+            <button
+              className="pr-approval-add-note-link"
+              onClick={() => setShowAgentFeedback(true)}
+            >
+              + Add general feedback
+            </button>
+          )}
+
           <ApprovalFooter
             onApprove={handleApprove}
-            onRequestChanges={handleRequestChanges}
+            onRequestChanges={handleReviseOrExpand}
             onCancel={onCancel}
             isLoading={isLoading}
             approveLabel="Create Pull Request"
             approveDisabled={!prTitle.trim()}
             commentCount={comments.length}
+            requestChangesLabel={reviseLabel}
+            requestChangesDisabled={reviseDisabled}
+            requestChangesDisabledTitle="Add a revision note or diff comments"
           />
         </div>
       </div>

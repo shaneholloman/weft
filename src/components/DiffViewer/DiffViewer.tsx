@@ -1,7 +1,66 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import type { DiffFile, DiffHunk, DiffLine } from '../../utils/diffParser';
 import type { DiffComment } from '../../types';
 import './DiffViewer.css';
+
+/**
+ * Lightweight markdown renderer for diff comments.
+ * Supports: fenced code blocks, inline code, bold, italic.
+ */
+function SimpleMarkdown({ text }: { text: string }) {
+  const rendered = useMemo(() => {
+    const parts: React.ReactNode[] = [];
+    // Split on fenced code blocks first
+    const codeBlockRe = /```(?:\w*)\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let key = 0;
+
+    while ((match = codeBlockRe.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(...renderInline(text.slice(lastIndex, match.index), key));
+        key += 100;
+      }
+      parts.push(
+        <pre key={`cb-${key++}`} className="diff-comment-codeblock"><code>{match[1].replace(/\n$/, '')}</code></pre>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push(...renderInline(text.slice(lastIndex), key));
+    }
+    return parts;
+  }, [text]);
+
+  return <>{rendered}</>;
+}
+
+function renderInline(text: string, keyStart: number): React.ReactNode[] {
+  // Process inline: **bold**, *italic*, `code`
+  const inlineRe = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+?)`)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = keyStart;
+
+  while ((match = inlineRe.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<span key={`t-${key++}`}>{text.slice(lastIndex, match.index)}</span>);
+    }
+    if (match[2]) {
+      parts.push(<strong key={`b-${key++}`}>{match[2]}</strong>);
+    } else if (match[3]) {
+      parts.push(<em key={`i-${key++}`}>{match[3]}</em>);
+    } else if (match[4]) {
+      parts.push(<code key={`c-${key++}`} className="diff-comment-inline-code">{match[4]}</code>);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(<span key={`t-${key++}`}>{text.slice(lastIndex)}</span>);
+  }
+  return parts;
+}
 
 interface LineSelection {
   filePath: string;
@@ -18,6 +77,8 @@ interface DiffViewerProps {
   comments?: DiffComment[];
   onAddComment?: (comment: Omit<DiffComment, 'id'>) => void;
   onRemoveComment?: (id: string) => void;
+  activeCommentId?: string | null;
+  commentMode?: 'comment-only' | 'comment-and-suggestion';
 }
 
 export function DiffViewer({
@@ -27,6 +88,8 @@ export function DiffViewer({
   comments = [],
   onAddComment,
   onRemoveComment,
+  activeCommentId = null,
+  commentMode = 'comment-only',
 }: DiffViewerProps) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(
     new Set(files.map((f) => f.path))
@@ -35,7 +98,17 @@ export function DiffViewer({
   const [isDragging, setIsDragging] = useState(false);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [commentKind, setCommentKind] = useState<'comment' | 'suggestion'>('comment');
+  const [suggestionText, setSuggestionText] = useState('');
   const dragStartRef = useRef<{ filePath: string; line: number; type: string } | null>(null);
+
+  const resetCommentForm = useCallback(() => {
+    setSelection(null);
+    setShowCommentInput(false);
+    setCommentText('');
+    setCommentKind('comment');
+    setSuggestionText('');
+  }, []);
 
   const handleLineMouseDown = useCallback((filePath: string, lineNumber: number, lineType: string, e: React.MouseEvent) => {
     if (lineType === 'context' || lineType === 'header') return;
@@ -51,6 +124,8 @@ export function DiffViewer({
       endType: lineType as 'addition' | 'deletion' | 'context',
     });
     setShowCommentInput(false);
+    setCommentKind('comment');
+    setSuggestionText('');
 
     // Prevent text selection during drag
     e.preventDefault();
@@ -80,25 +155,30 @@ export function DiffViewer({
   }, [isDragging, selection]);
 
   const handleAddComment = () => {
-    if (!selection || !commentText.trim() || !onAddComment) return;
+    if (!selection || !onAddComment) return;
+
+    const body = commentText.trim();
+    const suggestion = suggestionText.trimEnd();
+    const requiresSuggestion = commentMode === 'comment-and-suggestion' && commentKind === 'suggestion';
+
+    if (!body && !suggestion) return;
+    if (requiresSuggestion && !suggestion) return;
 
     onAddComment({
       filePath: selection.filePath,
       lineNumber: selection.startLine,
       endLine: selection.endLine,
       lineType: selection.startType,
-      content: commentText.trim(),
+      content: body,
+      kind: commentKind,
+      suggestion: requiresSuggestion ? suggestion : undefined,
     });
 
-    setSelection(null);
-    setShowCommentInput(false);
-    setCommentText('');
+    resetCommentForm();
   };
 
   const handleCancelComment = () => {
-    setSelection(null);
-    setShowCommentInput(false);
-    setCommentText('');
+    resetCommentForm();
   };
 
   const isLineSelected = (filePath: string, lineNumber: number) => {
@@ -126,6 +206,17 @@ export function DiffViewer({
     }
     setExpandedFiles(newExpanded);
   };
+
+  // Ensure externally selected files are visible even if user previously collapsed them.
+  useEffect(() => {
+    if (!selectedFile) return;
+    setExpandedFiles((prev) => {
+      if (prev.has(selectedFile)) return prev;
+      const next = new Set(prev);
+      next.add(selectedFile);
+      return next;
+    });
+  }, [selectedFile]);
 
   if (files.length === 0) {
     return (
@@ -190,10 +281,16 @@ export function DiffViewer({
                     hunk={hunk}
                     filePath={file.path}
                     comments={fileComments}
+                    activeCommentId={activeCommentId}
                     selection={selection}
                     showCommentInput={showInputForFile}
                     commentText={commentText}
+                    commentKind={commentKind}
+                    suggestionText={suggestionText}
+                    commentMode={commentMode}
                     onCommentTextChange={setCommentText}
+                    onCommentKindChange={setCommentKind}
+                    onSuggestionTextChange={setSuggestionText}
                     onAddComment={handleAddComment}
                     onCancelComment={handleCancelComment}
                     onRemoveComment={onRemoveComment}
@@ -216,10 +313,16 @@ interface DiffHunkViewProps {
   hunk: DiffHunk;
   filePath: string;
   comments: DiffComment[];
+  activeCommentId?: string | null;
   selection: LineSelection | null;
   showCommentInput: boolean;
   commentText: string;
+  commentKind: 'comment' | 'suggestion';
+  suggestionText: string;
+  commentMode: 'comment-only' | 'comment-and-suggestion';
   onCommentTextChange: (text: string) => void;
+  onCommentKindChange: (kind: 'comment' | 'suggestion') => void;
+  onSuggestionTextChange: (text: string) => void;
   onAddComment: () => void;
   onCancelComment: () => void;
   onRemoveComment?: (id: string) => void;
@@ -233,10 +336,16 @@ function DiffHunkView({
   hunk,
   filePath,
   comments,
+  activeCommentId,
   selection,
   showCommentInput,
   commentText,
+  commentKind,
+  suggestionText,
+  commentMode,
   onCommentTextChange,
+  onCommentKindChange,
+  onSuggestionTextChange,
   onAddComment,
   onCancelComment,
   onRemoveComment,
@@ -279,9 +388,15 @@ function DiffHunkView({
               isSelected={isSelected}
               hasComment={hasComment(filePath, lineNumber, line.type)}
               comments={lineComments}
+              activeCommentId={activeCommentId}
               showCommentInput={showInputAfterThisLine}
               commentText={commentText}
+              commentKind={commentKind}
+              suggestionText={suggestionText}
+              commentMode={commentMode}
               onCommentTextChange={onCommentTextChange}
+              onCommentKindChange={onCommentKindChange}
+              onSuggestionTextChange={onSuggestionTextChange}
               onAddComment={onAddComment}
               onCancelComment={onCancelComment}
               onRemoveComment={onRemoveComment}
@@ -302,9 +417,15 @@ interface DiffLineViewProps {
   isSelected: boolean;
   hasComment: boolean;
   comments: DiffComment[];
+  activeCommentId?: string | null;
   showCommentInput: boolean;
   commentText: string;
+  commentKind: 'comment' | 'suggestion';
+  suggestionText: string;
+  commentMode: 'comment-only' | 'comment-and-suggestion';
   onCommentTextChange: (text: string) => void;
+  onCommentKindChange: (kind: 'comment' | 'suggestion') => void;
+  onSuggestionTextChange: (text: string) => void;
   onAddComment: () => void;
   onCancelComment: () => void;
   onRemoveComment?: (id: string) => void;
@@ -319,9 +440,15 @@ function DiffLineView({
   isSelected,
   hasComment,
   comments,
+  activeCommentId,
   showCommentInput,
   commentText,
+  commentKind,
+  suggestionText,
+  commentMode,
   onCommentTextChange,
+  onCommentKindChange,
+  onSuggestionTextChange,
   onAddComment,
   onCancelComment,
   onRemoveComment,
@@ -360,6 +487,9 @@ function DiffLineView({
     <>
       <div
         className={`diff-line ${getLineClass()} ${isSelected ? 'selected' : ''} ${canSelect && onMouseDown ? 'selectable' : ''}`}
+        data-line-file={filePath}
+        data-line-number={lineNumber}
+        data-line-type={line.type}
         onMouseDown={canSelect && onMouseDown ? (e) => onMouseDown(filePath, lineNumber, line.type, e) : undefined}
         onMouseEnter={onMouseEnter ? () => onMouseEnter(filePath, lineNumber, line.type) : undefined}
       >
@@ -384,15 +514,42 @@ function DiffLineView({
       {/* Comment input - appears after selection end */}
       {showCommentInput && (
         <div className="diff-comment-input">
+          {commentMode === 'comment-and-suggestion' && (
+            <div className="diff-comment-type">
+              <label htmlFor={`diff-comment-kind-${filePath}-${lineNumber}`}>Type</label>
+              <select
+                id={`diff-comment-kind-${filePath}-${lineNumber}`}
+                value={commentKind}
+                onChange={(e) => onCommentKindChange(e.target.value as 'comment' | 'suggestion')}
+              >
+                <option value="comment">Comment</option>
+                <option value="suggestion">Suggestion</option>
+              </select>
+            </div>
+          )}
           <textarea
             className="diff-comment-textarea"
             value={commentText}
             onChange={(e) => onCommentTextChange(e.target.value)}
-            placeholder="Add your feedback on the selected lines..."
+            placeholder={commentKind === 'suggestion'
+              ? 'Optional context for this suggestion...'
+              : commentMode === 'comment-and-suggestion'
+                ? 'Add a comment for the PR author on the selected lines...'
+                : 'Add your feedback on the selected lines...'}
             rows={2}
             autoFocus
             onMouseDown={(e) => e.stopPropagation()}
           />
+          {commentMode === 'comment-and-suggestion' && commentKind === 'suggestion' && (
+            <textarea
+              className="diff-comment-textarea diff-comment-suggestion"
+              value={suggestionText}
+              onChange={(e) => onSuggestionTextChange(e.target.value)}
+              placeholder="Suggested replacement code/text..."
+              rows={3}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          )}
           <div className="diff-comment-actions">
             <button className="diff-comment-cancel" onClick={onCancelComment}>
               Cancel
@@ -400,9 +557,13 @@ function DiffLineView({
             <button
               className="diff-comment-submit"
               onClick={onAddComment}
-              disabled={!commentText.trim()}
+              disabled={
+                commentKind === 'suggestion'
+                  ? !suggestionText.trim()
+                  : !commentText.trim()
+              }
             >
-              Add Comment
+              {commentKind === 'suggestion' ? 'Add Suggestion' : 'Add Comment'}
             </button>
           </div>
         </div>
@@ -410,13 +571,29 @@ function DiffLineView({
 
       {/* Existing comments that end on this line */}
       {comments.map((comment) => (
-        <div key={comment.id} className="diff-comment">
-          {comment.endLine && comment.endLine !== comment.lineNumber && (
-            <span className="diff-comment-lines">
-              Lines {comment.lineNumber}-{comment.endLine}
+        <div
+          key={comment.id}
+          className={`diff-comment ${activeCommentId === comment.id ? 'active' : ''}`}
+          data-comment-id={comment.id}
+          data-comment-file={comment.filePath}
+          data-comment-line={comment.lineNumber}
+        >
+          <div className="diff-comment-meta">
+            <span className="diff-comment-badge">
+              {comment.kind === 'suggestion' ? 'suggestion' : 'comment'}
             </span>
+            {comment.endLine && comment.endLine !== comment.lineNumber && (
+              <span className="diff-comment-lines">
+                L{comment.lineNumber}–{comment.endLine}
+              </span>
+            )}
+          </div>
+          <span className="diff-comment-content"><SimpleMarkdown text={comment.content} /></span>
+          {comment.kind === 'suggestion' && comment.suggestion && (
+            <div className="diff-comment-suggestion-preview">
+              {comment.suggestion}
+            </div>
           )}
-          <span className="diff-comment-content">{comment.content}</span>
           {onRemoveComment && (
             <button
               className="diff-comment-remove"
@@ -439,9 +616,10 @@ interface FileTreeProps {
   files: DiffFile[];
   selectedFile?: string;
   onSelect: (path: string) => void;
+  noteCounts?: Record<string, number>;
 }
 
-export function FileTree({ files, selectedFile, onSelect }: FileTreeProps) {
+export function FileTree({ files, selectedFile, onSelect, noteCounts }: FileTreeProps) {
   return (
     <div className="file-tree">
       <div className="file-tree-header">
@@ -465,6 +643,9 @@ export function FileTree({ files, selectedFile, onSelect }: FileTreeProps) {
               {file.path.split('/').pop()}
             </span>
             <span className="file-tree-stats">
+              {typeof noteCounts?.[file.path] === 'number' && noteCounts[file.path] > 0 && (
+                <span className="file-tree-note-count">{noteCounts[file.path]}</span>
+              )}
               {file.additions > 0 && (
                 <span className="stat-additions">+{file.additions}</span>
               )}

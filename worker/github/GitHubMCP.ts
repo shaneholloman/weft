@@ -18,6 +18,9 @@ const LEGACY_TOOL_NAMES: Record<string, string> = {
   'create_branch': 'createBranch',
   'create_pr': 'createPullRequest',
   'create_pull_request': 'createPullRequest',
+  'list_pull_request_files': 'listPullRequestFiles',
+  'submit_pr_review': 'submitPullRequestReview',
+  'submit_pull_request_review': 'submitPullRequestReview',
   'list_issues': 'listIssues',
   'list_pull_requests': 'listPullRequests',
   'list_repos': 'listRepositories',
@@ -32,11 +35,14 @@ const LEGACY_ARG_NAMES: Record<string, string> = {
   'pull_number': 'pullNumber',
   'issue_number': 'issueNumber',
   'per_page': 'perPage',
+  'commit_id': 'commitId',
+  'start_line': 'startLine',
+  'start_side': 'startSide',
 };
 
 export class GitHubMCPServer extends HostedMCPServer {
   readonly name = 'GitHub';
-  readonly description = 'Read-only access to repositories, issues, and pull requests. Use Sandbox for code changes.';
+  readonly description = 'Access repositories, issues, pull requests, and submit pull request reviews.';
 
   private accessToken: string;
 
@@ -75,6 +81,10 @@ export class GitHubMCPServer extends HostedMCPServer {
           return await this.getIssue(normalizedArgs);
         case 'getPullRequest':
           return await this.getPullRequest(normalizedArgs);
+        case 'listPullRequestFiles':
+          return await this.listPullRequestFiles(normalizedArgs);
+        case 'submitPullRequestReview':
+          return await this.submitPullRequestReview(normalizedArgs);
         case 'getRepository':
           return await this.getRepository(normalizedArgs);
         case 'listRepositories':
@@ -315,6 +325,9 @@ export class GitHubMCPServer extends HostedMCPServer {
       state: string;
       body: string | null;
       html_url: string;
+      user?: { login?: string };
+      head?: { ref?: string };
+      base?: { ref?: string };
     };
 
     const result = {
@@ -323,6 +336,116 @@ export class GitHubMCPServer extends HostedMCPServer {
       state: data.state,
       body: data.body || '',
       url: data.html_url,
+      author: data.user?.login || '',
+      head: data.head?.ref || '',
+      base: data.base?.ref || '',
+    };
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      structuredContent: result,
+    };
+  }
+
+  private async listPullRequestFiles(args: Record<string, unknown>): Promise<MCPToolCallResult> {
+    const { owner, repo, pullNumber, perPage = 100, page = 1 } = parseToolArgs(githubTools.listPullRequestFiles.input, args);
+
+    const params = new URLSearchParams({
+      per_page: String(perPage),
+      page: String(page),
+    });
+
+    const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${pullNumber}/files?${params.toString()}`;
+    const response = await this.githubFetch(url);
+    const data = await response.json() as Array<{
+      filename: string;
+      status: string;
+      additions: number;
+      deletions: number;
+      changes: number;
+      patch?: string;
+      previous_filename?: string;
+    }>;
+
+    const result = data.map((file) => ({
+      filename: file.filename,
+      status: file.status,
+      additions: file.additions,
+      deletions: file.deletions,
+      changes: file.changes,
+      patch: file.patch,
+      previous_filename: file.previous_filename,
+    }));
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      structuredContent: result,
+    };
+  }
+
+  private async submitPullRequestReview(args: Record<string, unknown>): Promise<MCPToolCallResult> {
+    const {
+      owner,
+      repo,
+      pullNumber,
+      event = 'COMMENT',
+      body = '',
+      commitId,
+      comments = [],
+    } = parseToolArgs(githubTools.submitPullRequestReview.input, args);
+
+    const normalizedComments = comments.map((comment) => {
+      const commentBody = (comment.body || '').trim();
+      const suggestionBody = (comment.suggestion || '').trimEnd();
+
+      if (!commentBody && !suggestionBody) {
+        throw new Error(`Review comment on ${comment.path}:${comment.line} is missing both body and suggestion`);
+      }
+
+      const fence = suggestionBody.includes('```') ? '````' : '```';
+      const suggestionText = suggestionBody
+        ? comment.side === 'RIGHT'
+          ? `${fence}suggestion\n${suggestionBody}\n${fence}`
+          : suggestionBody
+        : '';
+
+      const composedBody = [commentBody, suggestionText].filter(Boolean).join('\n\n');
+
+      return {
+        path: comment.path,
+        line: comment.line,
+        side: comment.side,
+        ...(comment.startLine ? { start_line: comment.startLine } : {}),
+        ...(comment.startSide ? { start_side: comment.startSide } : {}),
+        body: composedBody,
+      };
+    });
+
+    const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`;
+    const response = await this.githubFetch(url, {
+      method: 'POST',
+      body: JSON.stringify({
+        event,
+        body,
+        ...(commitId ? { commit_id: commitId } : {}),
+        ...(normalizedComments.length > 0 ? { comments: normalizedComments } : {}),
+      }),
+    });
+
+    const data = await response.json() as {
+      id: number;
+      state: string;
+      body: string | null;
+      html_url: string;
+      commit_id?: string;
+    };
+
+    const result = {
+      id: data.id,
+      state: data.state,
+      body: data.body || '',
+      url: data.html_url,
+      commit_id: data.commit_id,
     };
 
     return {
@@ -419,9 +542,14 @@ export class GitHubMCPServer extends HostedMCPServer {
     if (!response.ok) {
       let errorMessage = `GitHub API error: ${response.status}`;
       try {
-        const errorData = await response.json() as { message?: string };
-        if (errorData.message) {
-          errorMessage = errorData.message;
+        const errorData = await response.json();
+        const msg = (errorData as { message?: string }).message;
+        if (msg) {
+          errorMessage = msg;
+        }
+        const errors = (errorData as { errors?: unknown[] }).errors;
+        if (errors?.length) {
+          errorMessage += ' — ' + JSON.stringify(errors);
         }
       } catch {
         // Ignore JSON parse errors

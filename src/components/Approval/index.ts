@@ -8,3 +8,4 @@ export { getApprovalView } from './ApprovalViewRegistry';
 export type { ApprovalViewProps } from './ApprovalViewRegistry';
 export { DefaultApproval } from './DefaultApproval';
 export { GitHubPRApproval } from './GitHubPRApproval';
+export { GitHubPRReviewApproval } from './GitHubPRReviewApproval';

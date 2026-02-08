@@ -53,6 +53,27 @@ const prDetailOutput = z.object({
   state: z.string().describe('PR state'),
   body: z.string().describe('PR body'),
   url: z.string().describe('URL to the PR'),
+  author: z.string().optional().describe('PR author login'),
+  head: z.string().optional().describe('Head branch name'),
+  base: z.string().optional().describe('Base branch name'),
+});
+
+const pullRequestFileOutput = z.object({
+  filename: z.string().describe('Path of the changed file'),
+  status: z.string().describe('File status (added, modified, removed, renamed)'),
+  additions: z.number().describe('Number of added lines'),
+  deletions: z.number().describe('Number of deleted lines'),
+  changes: z.number().describe('Total number of changed lines'),
+  patch: z.string().optional().describe('Unified diff patch for this file'),
+  previous_filename: z.string().optional().describe('Previous path for renamed files'),
+});
+
+const pullRequestReviewOutput = z.object({
+  id: z.number().describe('Review ID'),
+  state: z.string().describe('Review state'),
+  body: z.string().describe('Review body'),
+  url: z.string().describe('URL to the review'),
+  commit_id: z.string().optional().describe('Commit SHA the review is attached to'),
 });
 
 const repoOutput = z.object({
@@ -173,6 +194,59 @@ export const githubTools = defineTools({
         .describe('Pull request number'),
     }),
     output: prDetailOutput,
+  },
+
+  listPullRequestFiles: {
+    description: 'List changed files in a pull request with patch snippets',
+    input: z.object({
+      owner: commonSchemas.owner,
+      repo: commonSchemas.repo,
+      pullNumber: z.coerce.number().int().positive()
+        .describe('Pull request number'),
+      perPage: z.coerce.number().int().min(1).max(100).default(100)
+        .describe('Number of files to return per page (default: 100, max: 100)'),
+      page: z.coerce.number().int().min(1).default(1)
+        .describe('Page number (default: 1)'),
+    }),
+    output: z.array(pullRequestFileOutput),
+  },
+
+  submitPullRequestReview: {
+    description: 'Submit a pull request review with a decision, summary, and optional inline comments/suggestions',
+    input: z.object({
+      owner: commonSchemas.owner,
+      repo: commonSchemas.repo,
+      pullNumber: z.coerce.number().int().positive()
+        .describe('Pull request number'),
+      event: z.enum(['APPROVE', 'REQUEST_CHANGES', 'COMMENT']).default('COMMENT')
+        .describe('Final review decision'),
+      body: z.string().max(65000).default('')
+        .describe('Review summary/body'),
+      commitId: z.string().max(100).optional()
+        .describe('Optional commit SHA to anchor inline comments'),
+      comments: z.array(
+        z.object({
+          path: z.string().max(500).describe('File path relative to repository root'),
+          line: z.coerce.number().int().positive()
+            .describe('Line number in the pull request diff'),
+          side: z.enum(['LEFT', 'RIGHT']).default('RIGHT')
+            .describe('Diff side: RIGHT for additions/current, LEFT for removals'),
+          startLine: z.coerce.number().int().positive().optional()
+            .describe('Optional start line for multi-line comments'),
+          startSide: z.enum(['LEFT', 'RIGHT']).optional()
+            .describe('Optional side for startLine'),
+          body: z.string().max(65000).optional()
+            .describe('Comment body'),
+          suggestion: z.string().max(65000).optional()
+            .describe('Optional suggested replacement text (RIGHT-side comments only)'),
+        })
+      ).default([])
+        .describe('Inline review comments to post'),
+    }),
+    output: pullRequestReviewOutput,
+    approvalRequiredFields: ['owner', 'repo', 'pullNumber', 'event', 'diff'],
+    requiresApproval: true,
+    disabledInScheduledRuns: true,
   },
 
   getRepository: {

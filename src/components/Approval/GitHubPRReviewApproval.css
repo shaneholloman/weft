@@ -1,0 +1,335 @@
+.pr-review-approval-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 520px;
+}
+
+.pr-review-approval-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+}
+
+.pr-review-approval-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pr-review-approval-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pr-review-approval-title-row h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pr-review-approval-pr-title {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.pr-review-approval-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pr-review-repo-code,
+.pr-review-branch-code {
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
+}
+
+.pr-review-approval-branch-arrow {
+  color: var(--color-text-muted);
+}
+
+.pr-review-approval-branch-into {
+  color: var(--color-text-muted);
+}
+
+.pr-review-approval-author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pr-review-author-label {
+  color: var(--color-text-muted);
+}
+
+.pr-review-author-handle {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.pr-review-approval-stats {
+  display: flex;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pr-review-approval-stats .stat-files {
+  color: var(--color-text-secondary);
+}
+
+.pr-review-approval-stats .stat-additions {
+  color: #22c55e;
+}
+
+.pr-review-approval-stats .stat-deletions {
+  color: #ef4444;
+}
+
+.pr-review-approval-stats .stat-comments {
+  color: var(--color-text-primary);
+}
+
+.pr-review-approval-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-review-approval-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+
+.pr-review-approval-main-empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pr-review-approval-files {
+  border-right: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-review-approval-diff {
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+/* ── Footer ── */
+
+.pr-review-approval-footer {
+  border-top: 1px solid var(--color-border-default);
+  background: var(--color-bg-secondary);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pr-review-footer-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Decision pill buttons */
+
+.pr-review-decision-pills {
+  display: flex;
+  width: fit-content;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.pr-review-decision-pill {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.pr-review-decision-pill:not(:last-child) {
+  border-right: 1px solid var(--color-border-default);
+}
+
+.pr-review-decision-pill:hover:not(.active):not(:disabled) {
+  background: var(--color-bg-tertiary);
+}
+
+.pr-review-decision-pill.active {
+  background: var(--color-accent-primary);
+  color: #fff;
+}
+
+.pr-review-decision-pill:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Review body textarea (posted to PR) */
+
+.pr-review-body-textarea {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.pr-review-body-textarea:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+}
+
+.pr-review-body-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Agent feedback (collapsible) */
+
+.pr-review-agent-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pr-review-agent-feedback-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pr-review-agent-feedback-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.pr-review-agent-feedback-dismiss {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.pr-review-agent-feedback-dismiss:hover {
+  color: var(--color-text-primary);
+}
+
+.pr-review-textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  resize: vertical;
+}
+
+.pr-review-textarea:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+}
+
+.pr-review-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pr-review-approval-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 100%;
+  color: var(--color-text-muted);
+}
+
+.pr-review-approval-empty-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
+
+.pr-review-approval-empty-title {
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.pr-review-approval-empty-message {
+  max-width: 320px;
+  text-align: center;
+  font-size: 12px;
+}
+
+@media (max-width: 1200px) {
+  .pr-review-approval-main {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .pr-review-approval-main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pr-review-approval-files {
+    border-right: none;
+    border-top: 1px solid var(--color-border-default);
+  }
+
+  .pr-review-decision-pills {
+    align-self: stretch;
+  }
+
+  .pr-review-decision-pill {
+    flex: 1;
+    text-align: center;
+  }
+}
